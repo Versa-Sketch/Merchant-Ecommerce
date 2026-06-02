@@ -1,0 +1,18 @@
+export const Colors = {
+  primary: '#006D77',
+  deepTeal: '#004D57',
+  copper: '#C97C5D',
+  softCopper: '#E08E72',
+  background: '#F7FAFA',
+  surface: '#FFFFFF',
+  textPrimary: '#1D2327',
+  textSecondary: '#667085',
+  success: '#22B573',
+  warning: '#F2A93B',
+  error: '#E5484D',
+  border: '#E4E7EC',
+  white: '#FFFFFF',
+  glassBg: 'rgba(255, 255, 255, 0.85)',
+  glassBorder: 'rgba(255, 255, 255, 0.4)',
+  cardShadow: '#101828',
+};
