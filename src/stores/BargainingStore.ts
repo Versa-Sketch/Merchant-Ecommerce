@@ -1,94 +1,152 @@
-import { types } from 'mobx-state-tree';
+import { makeAutoObservable } from 'mobx';
 
-export const BargainMessage = types.model('BargainMessage', {
-  id: types.identifier,
-  sender: types.enumeration('SenderType', ['customer', 'merchant', 'system']),
-  message: types.string,
-  time: types.string,
-  price: types.maybe(types.number),
-});
+export class BargainMessage {
+  id: string;
+  sender: 'customer' | 'merchant' | 'system';
+  message: string;
+  time: string;
+  price?: number;
 
-export const Bargain = types
-  .model('Bargain', {
-    id: types.identifier,
-    customerName: types.string,
-    productId: types.string,
-    productName: types.string,
-    productImage: types.string,
-    originalPrice: types.number, // MRP
-    currentPrice: types.number, // Selling Price
-    customerOffer: types.number,
-    potentialProfit: types.number,
-    merchantCost: types.number,
-    status: types.enumeration('BargainStatus', ['Pending', 'Accepted', 'Rejected', 'Expired']),
-    expirationTime: types.number, // remaining seconds
-    timeline: types.array(BargainMessage),
-    history: types.array(types.number),
-  })
-  .actions((self) => ({
-    acceptBargain() {
-      self.status = 'Accepted';
-      self.timeline.push({
+  constructor(data: {
+    id: string;
+    sender: 'customer' | 'merchant' | 'system';
+    message: string;
+    time: string;
+    price?: number;
+  }) {
+    this.id = data.id;
+    this.sender = data.sender;
+    this.message = data.message;
+    this.time = data.time;
+    this.price = data.price;
+    makeAutoObservable(this);
+  }
+}
+
+export class Bargain {
+  id: string;
+  customerName: string;
+  productId: string;
+  productName: string;
+  productImage: string;
+  originalPrice: number;
+  currentPrice: number;
+  customerOffer: number;
+  potentialProfit: number;
+  merchantCost: number;
+  status: 'Pending' | 'Accepted' | 'Rejected' | 'Expired';
+  expirationTime: number;
+  timeline: BargainMessage[] = [];
+  history: number[] = [];
+
+  constructor(data: {
+    id: string;
+    customerName: string;
+    productId: string;
+    productName: string;
+    productImage: string;
+    originalPrice: number;
+    currentPrice: number;
+    customerOffer: number;
+    potentialProfit: number;
+    merchantCost: number;
+    status: 'Pending' | 'Accepted' | 'Rejected' | 'Expired';
+    expirationTime: number;
+    timeline: any[];
+    history: number[];
+  }) {
+    this.id = data.id;
+    this.customerName = data.customerName;
+    this.productId = data.productId;
+    this.productName = data.productName;
+    this.productImage = data.productImage;
+    this.originalPrice = data.originalPrice;
+    this.currentPrice = data.currentPrice;
+    this.customerOffer = data.customerOffer;
+    this.potentialProfit = data.potentialProfit;
+    this.merchantCost = data.merchantCost;
+    this.status = data.status;
+    this.expirationTime = data.expirationTime;
+    this.timeline = data.timeline.map((t) => new BargainMessage(t));
+    this.history = [...data.history];
+    makeAutoObservable(this);
+  }
+
+  acceptBargain() {
+    this.status = 'Accepted';
+    this.timeline.push(
+      new BargainMessage({
         id: `msg-${Date.now()}-sys`,
         sender: 'system',
-        message: `Offer of ₹${self.customerOffer} accepted by merchant. Order generated!`,
+        message: `Offer of ₹${this.customerOffer} accepted by merchant. Order generated!`,
         time: 'Just now',
-      });
-    },
-    rejectBargain() {
-      self.status = 'Rejected';
-      self.timeline.push({
+      })
+    );
+  }
+
+  rejectBargain() {
+    this.status = 'Rejected';
+    this.timeline.push(
+      new BargainMessage({
         id: `msg-${Date.now()}-sys`,
         sender: 'system',
         message: 'Offer rejected by merchant.',
         time: 'Just now',
-      });
-    },
-    counterBargain(counterPrice: number) {
-      self.history.push(counterPrice);
-      self.timeline.push({
+      })
+    );
+  }
+
+  counterBargain(counterPrice: number) {
+    this.history.push(counterPrice);
+    this.timeline.push(
+      new BargainMessage({
         id: `msg-${Date.now()}-mer`,
         sender: 'merchant',
         message: `Counter offered ₹${counterPrice}`,
         time: 'Just now',
         price: counterPrice,
-      });
-      // Simulate customer response
-      setTimeout(() => {
-        // We will mock this or support this in the store
-      }, 1000);
-    },
-    receiveCustomerCounter(customerPrice: number) {
-      self.customerOffer = customerPrice;
-      self.potentialProfit = customerPrice - self.merchantCost;
-      self.timeline.push({
+      })
+    );
+  }
+
+  receiveCustomerCounter(customerPrice: number) {
+    this.customerOffer = customerPrice;
+    this.potentialProfit = customerPrice - this.merchantCost;
+    this.timeline.push(
+      new BargainMessage({
         id: `msg-${Date.now()}-cus`,
         sender: 'customer',
         message: `Customer countered with ₹${customerPrice}`,
         time: 'Just now',
         price: customerPrice,
-      });
-    },
-    tickTimer() {
-      if (self.expirationTime > 0 && self.status === 'Pending') {
-        self.expirationTime -= 1;
-        if (self.expirationTime === 0) {
-          self.status = 'Expired';
-          self.timeline.push({
+      })
+    );
+  }
+
+  tickTimer() {
+    if (this.expirationTime > 0 && this.status === 'Pending') {
+      this.expirationTime -= 1;
+      if (this.expirationTime === 0) {
+        this.status = 'Expired';
+        this.timeline.push(
+          new BargainMessage({
             id: `msg-${Date.now()}-exp`,
             sender: 'system',
             message: 'Bargain request expired.',
             time: 'Just now',
-          });
-        }
+          })
+        );
       }
-    },
-  }));
+    }
+  }
+}
 
-export const BargainingStore = types
-  .model('BargainingStore', {
-    bargains: types.optional(types.array(Bargain), [
-      {
+export class BargainingStore {
+  bargains: Bargain[] = [];
+
+  constructor() {
+    this.bargains = [
+      new Bargain({
         id: 'BAR-3091',
         customerName: 'Amit Saxena',
         productId: 'PRD-1001',
@@ -98,16 +156,16 @@ export const BargainingStore = types
         currentPrice: 60,
         customerOffer: 50,
         merchantCost: 35,
-        potentialProfit: 15, // customerOffer (50) - merchantCost (35)
+        potentialProfit: 15,
         status: 'Pending',
-        expirationTime: 240, // 4 mins
+        expirationTime: 240,
         timeline: [
           { id: '1', sender: 'system', message: 'Bargain request initiated by Amit.', time: '2 mins ago' },
           { id: '2', sender: 'customer', message: 'Looking to buy 3 kgs. Can I get it for ₹50/kg?', time: '2 mins ago', price: 50 },
         ],
         history: [50],
-      },
-      {
+      }),
+      new Bargain({
         id: 'BAR-3092',
         customerName: 'Karan Malhotra',
         productId: 'PRD-1004',
@@ -119,14 +177,14 @@ export const BargainingStore = types
         merchantCost: 320,
         potentialProfit: 160,
         status: 'Pending',
-        expirationTime: 580, // 9 mins 40 secs
+        expirationTime: 580,
         timeline: [
           { id: '3', sender: 'system', message: 'Bargain request initiated by Karan.', time: '5 mins ago' },
           { id: '4', sender: 'customer', message: 'Hey, ₹599 is a bit high. How about ₹480?', time: '5 mins ago', price: 480 },
         ],
         history: [480],
-      },
-      {
+      }),
+      new Bargain({
         id: 'BAR-3088',
         customerName: 'Sneha Patil',
         productId: 'PRD-1002',
@@ -145,8 +203,8 @@ export const BargainingStore = types
           { id: '7', sender: 'system', message: 'Offer of ₹250 accepted by merchant. Order generated!', time: '55 mins ago' },
         ],
         history: [250],
-      },
-      {
+      }),
+      new Bargain({
         id: 'BAR-3085',
         customerName: 'Rohan Shah',
         productId: 'PRD-1006',
@@ -165,58 +223,64 @@ export const BargainingStore = types
           { id: '10', sender: 'system', message: 'Offer rejected by merchant.', time: '1 hr 55 mins ago' },
         ],
         history: [180],
-      },
-    ]),
-  })
-  .views((self) => ({
-    get pendingBargains() {
-      return self.bargains.filter((b) => b.status === 'Pending');
-    },
-    get acceptedBargains() {
-      return self.bargains.filter((b) => b.status === 'Accepted');
-    },
-    get rejectedBargains() {
-      return self.bargains.filter((b) => b.status === 'Rejected');
-    },
-    get expiredBargains() {
-      return self.bargains.filter((b) => b.status === 'Expired');
-    },
-  }))
-  .actions((self) => ({
-    acceptBargain(id: string) {
-      const bargain = self.bargains.find((b) => b.id === id);
-      if (bargain) {
-        bargain.acceptBargain();
-      }
-    },
-    rejectBargain(id: string) {
-      const bargain = self.bargains.find((b) => b.id === id);
-      if (bargain) {
-        bargain.rejectBargain();
-      }
-    },
-    counterBargain(id: string, counterPrice: number) {
-      const bargain = self.bargains.find((b) => b.id === id);
-      if (bargain) {
-        bargain.counterBargain(counterPrice);
-        // Simulate customer response after 2.5 seconds
-        setTimeout(() => {
-          // Accept counter offer or counter again
-          const acceptChance = Math.random() > 0.4;
-          if (acceptChance) {
-            bargain.acceptBargain();
-          } else {
-            const nextOffer = Math.floor(counterPrice - (counterPrice - bargain.customerOffer) * 0.5);
-            bargain.receiveCustomerCounter(nextOffer);
-          }
-        }, 2500);
-      }
-    },
-    tickAll() {
-      self.bargains.forEach((b) => b.tickTimer());
-    },
-    injectWebSocketBargain(bargain: any) {
-      self.bargains.unshift(bargain);
-    },
-  }));
-export type BargainingStoreType = typeof BargainingStore;
+      }),
+    ];
+    makeAutoObservable(this);
+  }
+
+  get pendingBargains() {
+    return this.bargains.filter((b) => b.status === 'Pending');
+  }
+
+  get acceptedBargains() {
+    return this.bargains.filter((b) => b.status === 'Accepted');
+  }
+
+  get rejectedBargains() {
+    return this.bargains.filter((b) => b.status === 'Rejected');
+  }
+
+  get expiredBargains() {
+    return this.bargains.filter((b) => b.status === 'Expired');
+  }
+
+  acceptBargain(id: string) {
+    const bargain = this.bargains.find((b) => b.id === id);
+    if (bargain) {
+      bargain.acceptBargain();
+    }
+  }
+
+  rejectBargain(id: string) {
+    const bargain = this.bargains.find((b) => b.id === id);
+    if (bargain) {
+      bargain.rejectBargain();
+    }
+  }
+
+  counterBargain(id: string, counterPrice: number) {
+    const bargain = this.bargains.find((b) => b.id === id);
+    if (bargain) {
+      bargain.counterBargain(counterPrice);
+      setTimeout(() => {
+        const acceptChance = Math.random() > 0.4;
+        if (acceptChance) {
+          bargain.acceptBargain();
+        } else {
+          const nextOffer = Math.floor(counterPrice - (counterPrice - bargain.customerOffer) * 0.5);
+          bargain.receiveCustomerCounter(nextOffer);
+        }
+      }, 2500);
+    }
+  }
+
+  tickAll() {
+    this.bargains.forEach((b) => b.tickTimer());
+  }
+
+  injectWebSocketBargain(bargain: any) {
+    this.bargains.unshift(new Bargain(bargain));
+  }
+}
+
+export type BargainingStoreType = BargainingStore;

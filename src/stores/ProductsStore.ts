@@ -1,61 +1,96 @@
-import { types } from 'mobx-state-tree';
+import { makeAutoObservable } from 'mobx';
 
-export const Product = types
-  .model('Product', {
-    id: types.identifier,
-    name: types.string,
-    description: types.string,
-    category: types.string,
-    mrp: types.number,
-    sellingPrice: types.number,
-    gst: types.number,
-    stock: types.number,
-    image: types.string,
-    startDate: types.optional(types.string, '2026-06-01'),
-    expiryDate: types.optional(types.string, '2026-12-31'),
-    validityDate: types.optional(types.string, '2026-12-31'),
-    showUntilDays: types.optional(types.number, 180),
-    status: types.optional(types.enumeration('ProductStatus', ['Active', 'Low Stock', 'Out Of Stock', 'Hidden']), 'Active'),
-  })
-  .actions((self) => ({
-    updateStock(amount: number) {
-      self.stock = amount;
-      if (self.stock === 0) {
-        self.status = 'Out Of Stock';
-      } else if (self.stock < 10) {
-        self.status = 'Low Stock';
-      } else if (self.status !== 'Hidden') {
-        self.status = 'Active';
-      }
-    },
-    toggleHide() {
-      if (self.status === 'Hidden') {
-        self.status = self.stock === 0 ? 'Out Of Stock' : (self.stock < 10 ? 'Low Stock' : 'Active');
-      } else {
-        self.status = 'Hidden';
-      }
-    },
-    updateDetails(details: {
-      name?: string;
-      description?: string;
-      category?: string;
-      mrp?: number;
-      sellingPrice?: number;
-      gst?: number;
-      stock?: number;
-      startDate?: string;
-      expiryDate?: string;
-      validityDate?: string;
-      showUntilDays?: number;
-    }) {
-      Object.assign(self, details);
-    },
-  }));
+export class Product {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  mrp: number;
+  sellingPrice: number;
+  gst: number;
+  stock: number;
+  image: string;
+  startDate: string;
+  expiryDate: string;
+  validityDate: string;
+  showUntilDays: number;
+  status: 'Active' | 'Low Stock' | 'Out Of Stock' | 'Hidden';
 
-export const ProductsStore = types
-  .model('ProductsStore', {
-    products: types.optional(types.array(Product), [
-      {
+  constructor(data: {
+    id: string;
+    name: string;
+    description: string;
+    category: string;
+    mrp: number;
+    sellingPrice: number;
+    gst: number;
+    stock: number;
+    image: string;
+    startDate?: string;
+    expiryDate?: string;
+    validityDate?: string;
+    showUntilDays?: number;
+    status?: 'Active' | 'Low Stock' | 'Out Of Stock' | 'Hidden';
+  }) {
+    this.id = data.id;
+    this.name = data.name;
+    this.description = data.description;
+    this.category = data.category;
+    this.mrp = data.mrp;
+    this.sellingPrice = data.sellingPrice;
+    this.gst = data.gst;
+    this.stock = data.stock;
+    this.image = data.image;
+    this.startDate = data.startDate ?? '2026-06-01';
+    this.expiryDate = data.expiryDate ?? '2026-12-31';
+    this.validityDate = data.validityDate ?? '2026-12-31';
+    this.showUntilDays = data.showUntilDays ?? 180;
+    this.status = data.status ?? 'Active';
+    makeAutoObservable(this);
+  }
+
+  updateStock(amount: number) {
+    this.stock = amount;
+    if (this.stock === 0) {
+      this.status = 'Out Of Stock';
+    } else if (this.stock < 10) {
+      this.status = 'Low Stock';
+    } else if (this.status !== 'Hidden') {
+      this.status = 'Active';
+    }
+  }
+
+  toggleHide() {
+    if (this.status === 'Hidden') {
+      this.status = this.stock === 0 ? 'Out Of Stock' : (this.stock < 10 ? 'Low Stock' : 'Active');
+    } else {
+      this.status = 'Hidden';
+    }
+  }
+
+  updateDetails(details: {
+    name?: string;
+    description?: string;
+    category?: string;
+    mrp?: number;
+    sellingPrice?: number;
+    gst?: number;
+    stock?: number;
+    startDate?: string;
+    expiryDate?: string;
+    validityDate?: string;
+    showUntilDays?: number;
+  }) {
+    Object.assign(this, details);
+  }
+}
+
+export class ProductsStore {
+  products: Product[] = [];
+
+  constructor() {
+    this.products = [
+      new Product({
         id: 'PRD-1001',
         name: 'Organic Roma Tomatoes 1kg',
         description: 'Juicy, vine-ripened organic tomatoes. Sourced directly from local farmers.',
@@ -70,8 +105,8 @@ export const ProductsStore = types
         validityDate: '2026-06-08',
         showUntilDays: 6,
         status: 'Active',
-      },
-      {
+      }),
+      new Product({
         id: 'PRD-1002',
         name: 'Hass Avocados (2 units)',
         description: 'Ripe and creamy Hass Avocados. Perfect for homemade guacamole or salads.',
@@ -86,8 +121,8 @@ export const ProductsStore = types
         validityDate: '2026-06-10',
         showUntilDays: 8,
         status: 'Low Stock',
-      },
-      {
+      }),
+      new Product({
         id: 'PRD-1003',
         name: 'Crocin Pain Relief Tablet (15s)',
         description: 'Fast acting relief from headache, body aches, and fever. Use with doctor recommendation.',
@@ -102,8 +137,8 @@ export const ProductsStore = types
         validityDate: '2028-05-15',
         showUntilDays: 700,
         status: 'Active',
-      },
-      {
+      }),
+      new Product({
         id: 'PRD-1004',
         name: 'Cotton Oversized Tee Black',
         description: 'Premium heavyweight cotton oversized t-shirt. Breathable and extremely durable.',
@@ -118,8 +153,8 @@ export const ProductsStore = types
         validityDate: '2029-05-20',
         showUntilDays: 1000,
         status: 'Active',
-      },
-      {
+      }),
+      new Product({
         id: 'PRD-1005',
         name: 'Noise ColorFit Pulse Smartwatch',
         description: 'Sleek smart watch with 1.4 inch screen, heart rate monitor, sleep tracking, and 10 day battery.',
@@ -134,8 +169,8 @@ export const ProductsStore = types
         validityDate: '2030-04-10',
         showUntilDays: 1400,
         status: 'Out Of Stock',
-      },
-      {
+      }),
+      new Product({
         id: 'PRD-1006',
         name: 'Gourmet Butter Chicken Rice Bowl',
         description: 'Rich and creamy butter chicken served over aromatic basmati rice. Freshly cooked.',
@@ -150,53 +185,59 @@ export const ProductsStore = types
         validityDate: '2026-06-03',
         showUntilDays: 1,
         status: 'Active',
-      },
-    ]),
-  })
-  .views((self) => ({
-    get activeProducts() {
-      return self.products.filter((p) => p.status === 'Active');
-    },
-    get lowStockProducts() {
-      return self.products.filter((p) => p.status === 'Low Stock');
-    },
-    get outOfStockProducts() {
-      return self.products.filter((p) => p.status === 'Out Of Stock');
-    },
-    get hiddenProducts() {
-      return self.products.filter((p) => p.status === 'Hidden');
-    },
-  }))
-  .actions((self) => ({
-    addProduct(product: {
-      name: string;
-      description: string;
-      category: string;
-      mrp: number;
-      sellingPrice: number;
-      gst: number;
-      stock: number;
-      image: string;
-      startDate: string;
-      expiryDate: string;
-      validityDate: string;
-      showUntilDays: number;
-    }) {
-      const id = `PRD-${1000 + self.products.length + 1}`;
-      const status = product.stock === 0 ? 'Out Of Stock' : (product.stock < 10 ? 'Low Stock' : 'Active');
-      self.products.push({ id, ...product, status });
-    },
-    adjustStock(id: string, amount: number) {
-      const product = self.products.find((p) => p.id === id);
-      if (product) {
-        product.updateStock(amount);
-      }
-    },
-    toggleHideProduct(id: string) {
-      const product = self.products.find((p) => p.id === id);
-      if (product) {
-        product.toggleHide();
-      }
-    },
-  }));
-export type ProductsStoreType = typeof ProductsStore;
+      }),
+    ];
+    makeAutoObservable(this);
+  }
+
+  get activeProducts() {
+    return this.products.filter((p) => p.status === 'Active');
+  }
+
+  get lowStockProducts() {
+    return this.products.filter((p) => p.status === 'Low Stock');
+  }
+
+  get outOfStockProducts() {
+    return this.products.filter((p) => p.status === 'Out Of Stock');
+  }
+
+  get hiddenProducts() {
+    return this.products.filter((p) => p.status === 'Hidden');
+  }
+
+  addProduct(product: {
+    name: string;
+    description: string;
+    category: string;
+    mrp: number;
+    sellingPrice: number;
+    gst: number;
+    stock: number;
+    image: string;
+    startDate: string;
+    expiryDate: string;
+    validityDate: string;
+    showUntilDays: number;
+  }) {
+    const id = `PRD-${1000 + this.products.length + 1}`;
+    const status = product.stock === 0 ? 'Out Of Stock' : (product.stock < 10 ? 'Low Stock' : 'Active');
+    this.products.push(new Product({ id, ...product, status }));
+  }
+
+  adjustStock(id: string, amount: number) {
+    const product = this.products.find((p) => p.id === id);
+    if (product) {
+      product.updateStock(amount);
+    }
+  }
+
+  toggleHideProduct(id: string) {
+    const product = this.products.find((p) => p.id === id);
+    if (product) {
+      product.toggleHide();
+    }
+  }
+}
+
+export type ProductsStoreType = ProductsStore;

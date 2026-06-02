@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react';
-import { types, Instance } from 'mobx-state-tree';
+import { makeAutoObservable } from 'mobx';
 import { AuthStore } from './AuthStore';
 import { DashboardStore } from './DashboardStore';
 import { OrdersStore } from './OrdersStore';
@@ -11,22 +11,26 @@ import { PaymentsStore } from './PaymentsStore';
 import { AnalyticsStore } from './AnalyticsStore';
 import { NotificationStore } from './NotificationStore';
 
-export const RootStore = types.model('RootStore', {
-  authStore: types.optional(AuthStore, {}),
-  dashboardStore: types.optional(DashboardStore, {}),
-  ordersStore: types.optional(OrdersStore, {}),
-  productsStore: types.optional(ProductsStore, {}),
-  inventoryStore: types.optional(InventoryStore, {}),
-  bargainingStore: types.optional(BargainingStore, {}),
-  deliveryStore: types.optional(DeliveryStore, {}),
-  paymentsStore: types.optional(PaymentsStore, {}),
-  analyticsStore: types.optional(AnalyticsStore, {}),
-  notificationStore: types.optional(NotificationStore, {}),
-});
+export class RootStore {
+  authStore = new AuthStore();
+  dashboardStore = new DashboardStore();
+  ordersStore = new OrdersStore();
+  productsStore = new ProductsStore();
+  inventoryStore = new InventoryStore();
+  bargainingStore = new BargainingStore();
+  deliveryStore = new DeliveryStore();
+  paymentsStore = new PaymentsStore();
+  analyticsStore = new AnalyticsStore();
+  notificationStore = new NotificationStore();
 
-export type RootStoreInstance = Instance<typeof RootStore>;
+  constructor() {
+    makeAutoObservable(this);
+  }
+}
 
-const rootStore = RootStore.create({});
+export type RootStoreInstance = RootStore;
+
+const rootStore = new RootStore();
 
 // Setup simple WebSocket-like simulator
 setInterval(() => {

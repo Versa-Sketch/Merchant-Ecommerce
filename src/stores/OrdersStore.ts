@@ -1,64 +1,119 @@
-import { types, Instance } from 'mobx-state-tree';
+import { makeAutoObservable } from 'mobx';
 
-export const OrderItem = types.model('OrderItem', {
-  id: types.identifier,
-  name: types.string,
-  quantity: types.number,
-  price: types.number,
-});
+export class OrderItem {
+  id: string;
+  name: string;
+  quantity: number;
+  price: number;
 
-export const OrderTimelineEvent = types.model('OrderTimelineEvent', {
-  status: types.string,
-  time: types.string,
-  completed: types.boolean,
-});
+  constructor(data: { id: string; name: string; quantity: number; price: number }) {
+    this.id = data.id;
+    this.name = data.name;
+    this.quantity = data.quantity;
+    this.price = data.price;
+    makeAutoObservable(this);
+  }
+}
 
-export const Order = types
-  .model('Order', {
-    id: types.identifier,
-    customerName: types.string,
-    itemsCount: types.number,
-    items: types.array(OrderItem),
-    amount: types.number,
-    paymentMethod: types.enumeration('PaymentMethod', ['COD', 'Online']),
-    orderTime: types.string,
-    status: types.enumeration('OrderStatus', [
-      'New Orders',
-      'Accepted',
-      'Packed',
-      'Out For Delivery',
-      'Delivered',
-      'Cancelled',
-      'Rejected',
-    ]),
-    deliveryPartnerId: types.maybe(types.string),
-    deliveryAddress: types.string,
-    customerPhone: types.string,
-    timeline: types.array(OrderTimelineEvent),
-  })
-  .actions((self) => ({
-    updateStatus(newStatus: typeof self.status) {
-      self.status = newStatus;
-      self.timeline.push({
+export class OrderTimelineEvent {
+  status: string;
+  time: string;
+  completed: boolean;
+
+  constructor(data: { status: string; time: string; completed: boolean }) {
+    this.status = data.status;
+    this.time = data.time;
+    this.completed = data.completed;
+    makeAutoObservable(this);
+  }
+}
+
+export class Order {
+  id: string;
+  customerName: string;
+  itemsCount: number;
+  items: OrderItem[] = [];
+  amount: number;
+  paymentMethod: 'COD' | 'Online';
+  orderTime: string;
+  status:
+    | 'New Orders'
+    | 'Accepted'
+    | 'Packed'
+    | 'Out For Delivery'
+    | 'Delivered'
+    | 'Cancelled'
+    | 'Rejected';
+  deliveryPartnerId?: string;
+  deliveryAddress: string;
+  customerPhone: string;
+  timeline: OrderTimelineEvent[] = [];
+
+  constructor(data: {
+    id: string;
+    customerName: string;
+    itemsCount: number;
+    items: any[];
+    amount: number;
+    paymentMethod: 'COD' | 'Online';
+    orderTime: string;
+    status:
+      | 'New Orders'
+      | 'Accepted'
+      | 'Packed'
+      | 'Out For Delivery'
+      | 'Delivered'
+      | 'Cancelled'
+      | 'Rejected';
+    deliveryPartnerId?: string;
+    deliveryAddress: string;
+    customerPhone: string;
+    timeline: any[];
+  }) {
+    this.id = data.id;
+    this.customerName = data.customerName;
+    this.itemsCount = data.itemsCount;
+    this.items = data.items.map((item) => new OrderItem(item));
+    this.amount = data.amount;
+    this.paymentMethod = data.paymentMethod;
+    this.orderTime = data.orderTime;
+    this.status = data.status;
+    this.deliveryPartnerId = data.deliveryPartnerId;
+    this.deliveryAddress = data.deliveryAddress;
+    this.customerPhone = data.customerPhone;
+    this.timeline = data.timeline.map((event) => new OrderTimelineEvent(event));
+    makeAutoObservable(this);
+  }
+
+  updateStatus(newStatus: typeof this.status) {
+    this.status = newStatus;
+    this.timeline.push(
+      new OrderTimelineEvent({
         status: newStatus,
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         completed: true,
-      });
-    },
-    assignDeliveryPartner(partnerId: string) {
-      self.deliveryPartnerId = partnerId;
-      self.timeline.push({
+      })
+    );
+  }
+
+  assignDeliveryPartner(partnerId: string) {
+    this.deliveryPartnerId = partnerId;
+    this.timeline.push(
+      new OrderTimelineEvent({
         status: 'Partner Assigned',
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         completed: true,
-      });
-    },
-  }));
+      })
+    );
+  }
+}
 
-export const OrdersStore = types
-  .model('OrdersStore', {
-    orders: types.optional(types.array(Order), [
-      {
+export class OrdersStore {
+  orders: Order[] = [];
+
+  constructor() {
+    this.orders = [
+      new Order({
         id: 'ORD-8492',
         customerName: 'Rahul Verma',
         itemsCount: 3,
@@ -76,8 +131,8 @@ export const OrdersStore = types
         timeline: [
           { status: 'Order Placed', time: '10 mins ago', completed: true },
         ],
-      },
-      {
+      }),
+      new Order({
         id: 'ORD-8491',
         customerName: 'Ananya Sen',
         itemsCount: 2,
@@ -94,8 +149,8 @@ export const OrdersStore = types
         timeline: [
           { status: 'Order Placed', time: '25 mins ago', completed: true },
         ],
-      },
-      {
+      }),
+      new Order({
         id: 'ORD-8490',
         customerName: 'Suresh Kumar',
         itemsCount: 1,
@@ -114,8 +169,8 @@ export const OrdersStore = types
           { status: 'Accepted', time: '40 mins ago', completed: true },
           { status: 'Partner Assigned', time: '38 mins ago', completed: true },
         ],
-      },
-      {
+      }),
+      new Order({
         id: 'ORD-8488',
         customerName: 'Vikram Mehta',
         itemsCount: 4,
@@ -135,8 +190,8 @@ export const OrdersStore = types
           { status: 'Accepted', time: '55 mins ago', completed: true },
           { status: 'Packed', time: '40 mins ago', completed: true },
         ],
-      },
-      {
+      }),
+      new Order({
         id: 'ORD-8485',
         customerName: 'Meera Nair',
         itemsCount: 2,
@@ -157,8 +212,8 @@ export const OrdersStore = types
           { status: 'Packed', time: '1 hr 30 mins ago', completed: true },
           { status: 'Out For Delivery', time: '15 mins ago', completed: true },
         ],
-      },
-      {
+      }),
+      new Order({
         id: 'ORD-8480',
         customerName: 'Divya Rao',
         itemsCount: 5,
@@ -179,51 +234,60 @@ export const OrdersStore = types
           { status: 'Out For Delivery', time: 'Yesterday 4:35 PM', completed: true },
           { status: 'Delivered', time: 'Yesterday 4:55 PM', completed: true },
         ],
-      },
-    ]),
-  })
-  .views((self) => ({
-    get newOrders() {
-      return self.orders.filter((o) => o.status === 'New Orders');
-    },
-    get acceptedOrders() {
-      return self.orders.filter((o) => o.status === 'Accepted');
-    },
-    get packedOrders() {
-      return self.orders.filter((o) => o.status === 'Packed');
-    },
-    get outForDeliveryOrders() {
-      return self.orders.filter((o) => o.status === 'Out For Delivery');
-    },
-    get deliveredOrders() {
-      return self.orders.filter((o) => o.status === 'Delivered');
-    },
-    get cancelledOrders() {
-      return self.orders.filter((o) => o.status === 'Cancelled' || o.status === 'Rejected');
-    },
-  }))
-  .actions((self) => ({
-    acceptOrder(id: string) {
-      const order = self.orders.find((o) => o.id === id);
-      if (order) {
-        order.updateStatus('Accepted');
-      }
-    },
-    rejectOrder(id: string) {
-      const order = self.orders.find((o) => o.id === id);
-      if (order) {
-        order.updateStatus('Rejected');
-      }
-    },
-    assignDeliveryPartner(orderId: string, partnerId: string) {
-      const order = self.orders.find((o) => o.id === orderId);
-      if (order) {
-        order.assignDeliveryPartner(partnerId);
-      }
-    },
-    injectWebSocketOrder(order: any) {
-      self.orders.unshift(order);
-    },
-  }));
-export type OrdersStoreType = typeof OrdersStore;
-export type OrderType = Instance<typeof Order>;
+      }),
+    ];
+    makeAutoObservable(this);
+  }
+
+  get newOrders() {
+    return this.orders.filter((o) => o.status === 'New Orders');
+  }
+
+  get acceptedOrders() {
+    return this.orders.filter((o) => o.status === 'Accepted');
+  }
+
+  get packedOrders() {
+    return this.orders.filter((o) => o.status === 'Packed');
+  }
+
+  get outForDeliveryOrders() {
+    return this.orders.filter((o) => o.status === 'Out For Delivery');
+  }
+
+  get deliveredOrders() {
+    return this.orders.filter((o) => o.status === 'Delivered');
+  }
+
+  get cancelledOrders() {
+    return this.orders.filter((o) => o.status === 'Cancelled' || o.status === 'Rejected');
+  }
+
+  acceptOrder(id: string) {
+    const order = this.orders.find((o) => o.id === id);
+    if (order) {
+      order.updateStatus('Accepted');
+    }
+  }
+
+  rejectOrder(id: string) {
+    const order = this.orders.find((o) => o.id === id);
+    if (order) {
+      order.updateStatus('Rejected');
+    }
+  }
+
+  assignDeliveryPartner(orderId: string, partnerId: string) {
+    const order = this.orders.find((o) => o.id === orderId);
+    if (order) {
+      order.assignDeliveryPartner(partnerId);
+    }
+  }
+
+  injectWebSocketOrder(order: any) {
+    this.orders.unshift(new Order(order));
+  }
+}
+
+export type OrdersStoreType = OrdersStore;
+export type OrderType = Order;
