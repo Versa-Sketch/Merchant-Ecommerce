@@ -12,12 +12,19 @@ export default function RootLayout() {
     <StoreProvider value={rootStore}>
       <GestureHandlerRootView style={{ flex: 1 }}>
         <SafeAreaProvider>
-          <StatusBar style="dark" />
+          <StatusBar style="light" />
           <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="index" />
-            <Stack.Screen name="(tabs)" />
+            <Stack.Screen name="index" options={{ animation: 'fade' }} />
+            <Stack.Screen name="(auth)" options={{ animation: 'fade', gestureEnabled: false }} />
+            <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
+            <Stack.Screen name="analytics/index" />
+            <Stack.Screen name="customers/index" />
+            <Stack.Screen name="delivery/index" />
+            <Stack.Screen name="inventory/index" />
+            <Stack.Screen name="payments/index" />
+            <Stack.Screen name="settings/index" />
+            <Stack.Screen name="support/index" />
           </Stack>
-          {/* Dev-only element inspector — zero cost in production */}
           {__DEV__ && <DevInspector />}
         </SafeAreaProvider>
       </GestureHandlerRootView>

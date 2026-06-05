@@ -1,0 +1,105 @@
+import { StyleSheet, Dimensions } from 'react-native';
+import { Colors } from '../../theme/colors';
+
+const { width, height } = Dimensions.get('window');
+
+export default StyleSheet.create({
+  safe: { flex: 1, backgroundColor: Colors.surface },
+  container: { flex: 1 },
+  illustrationArea: {
+    height: height * 0.46,
+    backgroundColor: Colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  blobTL: {
+    position: 'absolute', top: -40, left: -40,
+    width: 160, height: 160, borderRadius: 80,
+    backgroundColor: Colors.primaryLight,
+  },
+  blobBR: {
+    position: 'absolute', bottom: -30, right: -20,
+    width: 130, height: 130, borderRadius: 65,
+    backgroundColor: 'rgba(126,153,92,0.12)',
+  },
+  dot1: {
+    position: 'absolute', top: 60, right: 30,
+    width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.primary, opacity: 0.3,
+  },
+  dot2: {
+    position: 'absolute', bottom: 50, left: 40,
+    width: 5, height: 5, borderRadius: 2.5, backgroundColor: Colors.secondary, opacity: 0.4,
+  },
+  contentArea: {
+    flex: 1,
+    backgroundColor: Colors.surface,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    marginTop: -24,
+    paddingHorizontal: 28,
+    paddingTop: 32,
+    paddingBottom: 8,
+  },
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: Colors.primaryLight,
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    marginBottom: 18,
+    gap: 6,
+  },
+  badgeDot: {
+    width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.primary,
+  },
+  badgeText: { fontSize: 11, fontWeight: '700', color: Colors.primaryDark },
+  headline: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: Colors.textPrimary,
+    lineHeight: 36,
+    letterSpacing: -0.5,
+    marginBottom: 12,
+  },
+  headlineAccent: { color: Colors.primary },
+  subtext: {
+    fontSize: 15,
+    color: Colors.textSecondary,
+    lineHeight: 22,
+    marginBottom: 28,
+  },
+  features: { gap: 10, marginBottom: 32 },
+  featureRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  featureIconWrap: {
+    width: 32, height: 32, borderRadius: 10,
+    backgroundColor: Colors.primaryLight,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  featureText: { fontSize: 13, fontWeight: '500', color: Colors.textSecondary, flex: 1 },
+  footer: { gap: 12, paddingBottom: 8 },
+  ctaPrimary: {
+    backgroundColor: Colors.primary,
+    borderRadius: 20,
+    height: 56,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  ctaPrimaryText: { fontSize: 16, fontWeight: '700', color: Colors.white, letterSpacing: 0.2 },
+  ctaSecondary: {
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 4,
+  },
+  ctaSecondaryText: { fontSize: 14, fontWeight: '600', color: Colors.textSecondary },
+  ctaSecondaryAccent: { fontSize: 14, fontWeight: '700', color: Colors.primary },
+});

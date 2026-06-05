@@ -1,0 +1,85 @@
+import { StyleSheet } from 'react-native';
+import { Colors } from '../../theme/colors';
+
+export default StyleSheet.create({
+  safe: { flex: 1, backgroundColor: Colors.surface },
+  kav: { flex: 1 },
+  header: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 16, paddingVertical: 12,
+  },
+  backBtn: {
+    width: 40, height: 40, borderRadius: 12,
+    backgroundColor: Colors.background,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  content: { paddingHorizontal: 28, paddingTop: 24, flex: 1 },
+  eyebrow: {
+    fontSize: 12, fontWeight: '700', color: Colors.primary,
+    letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 12,
+  },
+  title: {
+    fontSize: 28, fontWeight: '800', color: Colors.textPrimary,
+    lineHeight: 36, letterSpacing: -0.5, marginBottom: 8,
+  },
+  phoneRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 36 },
+  phoneText: { fontSize: 15, fontWeight: '600', color: Colors.textSecondary },
+  phoneNumber: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
+  changeBtn: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: Colors.primaryLight },
+  changeBtnText: { fontSize: 12, fontWeight: '700', color: Colors.primary },
+  otpLabel: {
+    fontSize: 12, fontWeight: '600', color: Colors.textSecondary,
+    marginBottom: 16, letterSpacing: 0.3,
+  },
+  boxesRow: { flexDirection: 'row', gap: 14, marginBottom: 8 },
+  box: {
+    flex: 1, height: 64, borderRadius: 16,
+    borderWidth: 1.5, borderColor: Colors.border,
+    backgroundColor: Colors.background,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  boxFocused: { borderColor: Colors.primary, backgroundColor: Colors.surface },
+  boxFilled: { borderColor: Colors.primary, backgroundColor: Colors.primaryLight },
+  boxError: { borderColor: Colors.error, backgroundColor: Colors.errorBg },
+  boxInput: {
+    width: '100%', height: '100%',
+    textAlign: 'center',
+    fontSize: 26, fontWeight: '700', color: Colors.textPrimary,
+  },
+  errorRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 24 },
+  errorText: { fontSize: 12, fontWeight: '500', color: Colors.error },
+  resendRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 32 },
+  resendLabel: { fontSize: 13, color: Colors.textSecondary, fontWeight: '500' },
+  resendTimer: { fontSize: 13, fontWeight: '700', color: Colors.textPrimary },
+  resendBtn: { fontSize: 13, fontWeight: '700', color: Colors.primary },
+  footer: { paddingHorizontal: 28, paddingBottom: 8 },
+  cta: {
+    height: 56, borderRadius: 20,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  ctaEnabled: {
+    backgroundColor: Colors.primary,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  ctaDisabled: { backgroundColor: Colors.border },
+  ctaText: { fontSize: 16, fontWeight: '700', color: Colors.white },
+  ctaTextDisabled: { color: Colors.textMuted },
+  successOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: Colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 16,
+  },
+  successCircle: {
+    width: 80, height: 80, borderRadius: 40,
+    backgroundColor: Colors.primaryLight,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  successText: { fontSize: 17, fontWeight: '700', color: Colors.textPrimary },
+  successSub: { fontSize: 13, color: Colors.textSecondary },
+});

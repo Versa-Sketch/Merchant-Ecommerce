@@ -1,4 +1,5 @@
 import { makeAutoObservable } from 'mobx';
+import { SessionStore } from '../../Auth/Store';
 import { AuthStore } from '../../Settings/Store';
 import { DashboardStore } from '../../Home/Store';
 import { OrdersStore } from '../../Orders/Store';
@@ -13,6 +14,7 @@ import { NotificationStore } from '../../Notifications/Store';
 import { SupportStore } from '../../Support/Store';
 
 export class RootStore {
+  sessionStore = new SessionStore();
   authStore = new AuthStore();
   dashboardStore = new DashboardStore();
   ordersStore = new OrdersStore();

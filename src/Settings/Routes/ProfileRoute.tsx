@@ -10,7 +10,7 @@ import { Badge, Card, ScreenHeader } from '../../components/ui/MerchantPrimitive
 import styles from './styles';
 
 export default observer(function MoreScreen() {
-  const { authStore } = useStores();
+  const { authStore, sessionStore } = useStores();
 
   const settings = [
     { title: 'Store Profile', subtitle: 'Logo, address, public store details', icon: Building2, route: '/settings' },
@@ -65,7 +65,27 @@ export default observer(function MoreScreen() {
           ))}
         </View>
 
-        <TouchableOpacity style={styles.logoutButton} activeOpacity={0.75} onPress={() => Alert.alert('Logout', 'Logout flow is ready to connect.')}>
+        <TouchableOpacity
+          style={styles.logoutButton}
+          activeOpacity={0.75}
+          onPress={() => {
+            Alert.alert(
+              'Logout',
+              'You will be signed out of your merchant account.',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Sign Out',
+                  style: 'destructive',
+                  onPress: () => {
+                    sessionStore.logout();
+                    router.replace('/(auth)/welcome');
+                  },
+                },
+              ]
+            );
+          }}
+        >
           <LogOut size={17} color={Colors.error} />
           <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
