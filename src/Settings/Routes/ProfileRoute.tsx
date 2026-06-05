@@ -1,0 +1,75 @@
+import React from 'react';
+import { View, Text, ScrollView, TouchableOpacity, Image, Alert } from 'react-native';
+import { observer } from 'mobx-react-lite';
+import { router } from 'expo-router';
+import { Building2, Bell, CreditCard, FileText, HelpCircle, LogOut, Settings, ShieldCheck, ChevronRight } from 'lucide-react-native';
+import { useStores } from '../../Common/hooks/useStores';
+import { Colors } from '../../theme/colors';
+import { AnimatedScreen } from '../../Common/components/AnimatedScreen';
+import { Badge, Card, ScreenHeader } from '../../components/ui/MerchantPrimitives';
+import styles from './styles';
+
+export default observer(function MoreScreen() {
+  const { authStore } = useStores();
+
+  const settings = [
+    { title: 'Store Profile', subtitle: 'Logo, address, public store details', icon: Building2, route: '/settings' },
+    { title: 'Business Settings', subtitle: 'Hours, delivery radius, order rules', icon: Settings, route: '/settings' },
+    { title: 'Payout Settings', subtitle: 'Bank account and settlement schedule', icon: CreditCard, route: '/payments' },
+    { title: 'Notifications', subtitle: 'Order, bargain, stock, and payout alerts', icon: Bell, route: '/settings' },
+    { title: 'Support', subtitle: 'Help center and support conversations', icon: HelpCircle, route: '/support' },
+    { title: 'Policies', subtitle: 'Returns, tax, privacy, and merchant terms', icon: FileText, route: '/settings' },
+  ];
+
+  return (
+    <AnimatedScreen style={styles.container}>
+      <ScreenHeader title="More" subtitle="Account and store settings" />
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <Card style={styles.profileCard}>
+          <Image source={{ uri: authStore.logo }} style={styles.logo} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.storeName}>{authStore.storeName}</Text>
+            <Text style={styles.storeType}>{authStore.storeType} · Bengaluru</Text>
+            <View style={styles.badges}>
+              <Badge label="Open Now" tone="success" />
+              <Badge label="Verified" tone="primary" />
+            </View>
+          </View>
+        </Card>
+
+        <View style={styles.trustBanner}>
+          <ShieldCheck size={18} color={Colors.primary} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.trustTitle}>Merchant account in good standing</Text>
+            <Text style={styles.trustSub}>Payouts active · Policy checks complete · Catalog live</Text>
+          </View>
+        </View>
+
+        <View style={styles.settingsGroup}>
+          {settings.map(({ title, subtitle, icon: Icon, route }, index) => (
+            <TouchableOpacity
+              key={title}
+              style={[styles.settingRow, index === settings.length - 1 && styles.settingRowLast]}
+              activeOpacity={0.7}
+              onPress={() => router.push(route as any)}
+            >
+              <View style={styles.settingIcon}>
+                <Icon size={17} color={Colors.primary} />
+              </View>
+              <View style={styles.settingMeta}>
+                <Text style={styles.settingTitle}>{title}</Text>
+                <Text style={styles.settingSub}>{subtitle}</Text>
+              </View>
+              <ChevronRight size={16} color={Colors.textMuted} />
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <TouchableOpacity style={styles.logoutButton} activeOpacity={0.75} onPress={() => Alert.alert('Logout', 'Logout flow is ready to connect.')}>
+          <LogOut size={17} color={Colors.error} />
+          <Text style={styles.logoutText}>Logout</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </AnimatedScreen>
+  );
+});

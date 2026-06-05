@@ -1,149 +1,184 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { Tabs } from 'expo-router';
-import { View, Text, TouchableOpacity, StyleSheet, Dimensions, Platform } from 'react-native';
+import {
+  View, Text, TouchableOpacity, StyleSheet,
+  Animated, Platform,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Home, ShoppingBag, Package, Percent, User } from 'lucide-react-native';
+import { Home, ListChecks, Package, MessagesSquare, Menu } from 'lucide-react-native';
 import { Colors } from '../../theme/colors';
-import { Shadows } from '../../theme/shadows';
 
-const { width } = Dimensions.get('window');
+const TABS = [
+  { name: 'home/index',       label: 'Home',     Icon: Home },
+  { name: 'orders/index',     label: 'Orders',   Icon: ListChecks },
+  { name: 'products/index',   label: 'Products', Icon: Package },
+  { name: 'bargaining/index', label: 'Bargains', Icon: MessagesSquare },
+  { name: 'profile/index',    label: 'More',     Icon: Menu },
+];
 
-function CustomTabBar({ state, descriptors, navigation }: any) {
-  const insets = useSafeAreaInsets();
+// ── Individual tab item with press-scale micro-interaction ─────────────────
+function TabItem({
+  name,
+  label,
+  Icon,
+  focused,
+  onPress,
+}: {
+  name: string;
+  label: string;
+  Icon: React.ComponentType<any>;
+  focused: boolean;
+  onPress: () => void;
+}) {
+  const scale = useRef(new Animated.Value(1)).current;
 
-  // Find if keyboard is open to hide tab bar (optional, but good practice)
+  const handlePressIn = () => {
+    Animated.spring(scale, {
+      toValue: 0.88,
+      useNativeDriver: true,
+      speed: 60,
+      bounciness: 0,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scale, {
+      toValue: 1,
+      useNativeDriver: true,
+      speed: 28,
+      bounciness: 6,
+    }).start();
+  };
+
+  const color       = focused ? Colors.primary : Colors.textMuted;
+  const strokeWidth = focused ? 2.2 : 1.8;
+
   return (
-    <View style={[styles.tabBarContainer, { bottom: Platform.OS === 'ios' ? 24 : 16 }]}>
-      <View style={styles.tabBar}>
-        {state.routes.map((route: any, index: number) => {
-          const { options } = descriptors[route.key];
-          const isFocused = state.index === index;
+    <TouchableOpacity
+      accessibilityRole="button"
+      accessibilityState={focused ? { selected: true } : {}}
+      activeOpacity={1}
+      style={styles.item}
+      onPress={onPress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+    >
+      <Animated.View
+        style={[
+          styles.iconWrap,
+          focused && styles.iconWrapActive,
+          { transform: [{ scale }] },
+        ]}
+      >
+        <Icon color={color} size={21} strokeWidth={strokeWidth} />
+      </Animated.View>
+      <Text style={[styles.label, focused && styles.labelActive]}>
+        {label}
+      </Text>
+    </TouchableOpacity>
+  );
+}
 
-          const onPress = () => {
-            const event = navigation.emit({
-              type: 'tabPress',
-              target: route.key,
-              canPreventDefault: true,
-            });
+// ── Custom floating tab bar ────────────────────────────────────────────────
+function CustomTabBar({ state, navigation }: any) {
+  const insets = useSafeAreaInsets();
+  // Floating bar sits above the home indicator / gesture zone
+  const bottomOffset = Math.max(insets.bottom, 8) + 8;
 
-            if (!isFocused && !event.defaultPrevented) {
-              navigation.navigate(route.name);
-            }
-          };
+  return (
+    <View
+      style={[
+        styles.bar,
+        { bottom: bottomOffset },
+      ]}
+      pointerEvents="box-none"
+    >
+      {state.routes.map((route: any, index: number) => {
+        const focused = state.index === index;
+        const tab = TABS.find(t => t.name === route.name);
+        if (!tab) return null;
 
-          const getIcon = () => {
-            const color = isFocused ? Colors.primary : Colors.textSecondary;
-            const size = 22;
-            switch (route.name) {
-              case 'home/index':
-                return <Home color={color} size={size} strokeWidth={isFocused ? 2.5 : 2} />;
-              case 'orders/index':
-                return <ShoppingBag color={color} size={size} strokeWidth={isFocused ? 2.5 : 2} />;
-              case 'products/index':
-                return <Package color={color} size={size} strokeWidth={isFocused ? 2.5 : 2} />;
-              case 'bargaining/index':
-                return <Percent color={color} size={size} strokeWidth={isFocused ? 2.5 : 2} />;
-              case 'profile/index':
-                return <User color={color} size={size} strokeWidth={isFocused ? 2.5 : 2} />;
-              default:
-                return <Home color={color} size={size} />;
-            }
-          };
-
-          const getLabel = () => {
-            switch (route.name) {
-              case 'home/index':
-                return 'Home';
-              case 'orders/index':
-                return 'Orders';
-              case 'products/index':
-                return 'Products';
-              case 'bargaining/index':
-                return 'Bargain';
-              case 'profile/index':
-                return 'Profile';
-              default:
-                return '';
-            }
-          };
-
-          return (
-            <TouchableOpacity
-              key={route.key}
-              accessibilityRole="button"
-              accessibilityState={isFocused ? { selected: true } : {}}
-              onPress={onPress}
-              style={styles.tabItem}
-              activeOpacity={0.8}
-            >
-              <View style={[styles.iconWrapper, isFocused && styles.activeIconWrapper]}>
-                {getIcon()}
-              </View>
-              <Text style={[styles.tabLabel, { color: isFocused ? Colors.primary : Colors.textSecondary, fontWeight: isFocused ? '600' : '500' }]}>
-                {getLabel()}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
+        return (
+          <TabItem
+            key={route.key}
+            name={route.name}
+            label={tab.label}
+            Icon={tab.Icon}
+            focused={focused}
+            onPress={() => {
+              const event = navigation.emit({
+                type: 'tabPress',
+                target: route.key,
+                canPreventDefault: true,
+              });
+              if (!focused && !event.defaultPrevented) {
+                navigation.navigate(route.name);
+              }
+            }}
+          />
+        );
+      })}
     </View>
   );
 }
 
+// ── Layout ────────────────────────────────────────────────────────────────
 export default function TabLayout() {
   return (
     <Tabs
       tabBar={(props) => <CustomTabBar {...props} />}
-      screenOptions={{
-        headerShown: false,
-      }}
+      screenOptions={{ headerShown: false }}
     >
-      <Tabs.Screen name="home/index" options={{ title: 'Home' }} />
-      <Tabs.Screen name="orders/index" options={{ title: 'Orders' }} />
-      <Tabs.Screen name="products/index" options={{ title: 'Products' }} />
-      <Tabs.Screen name="bargaining/index" options={{ title: 'Bargaining' }} />
-      <Tabs.Screen name="profile/index" options={{ title: 'Profile' }} />
+      {TABS.map(({ name, label }) => (
+        <Tabs.Screen key={name} name={name} options={{ title: label }} />
+      ))}
     </Tabs>
   );
 }
 
 const styles = StyleSheet.create({
-  tabBarContainer: {
+  bar: {
     position: 'absolute',
     left: 16,
     right: 16,
-    zIndex: 10,
-  },
-  tabBar: {
     flexDirection: 'row',
-    backgroundColor: Colors.glassBg,
+    backgroundColor: Colors.surface,
     borderRadius: 24,
-    height: 68,
+    paddingTop: 10,
+    paddingBottom: 10,
+    paddingHorizontal: 6,
+    shadowColor: '#0F1F17',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.13,
+    shadowRadius: 22,
+    elevation: 12,
+    // Subtle top border for definition on light backgrounds
     borderWidth: 1,
-    borderColor: Colors.glassBorder,
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    paddingHorizontal: 8,
-    ...Shadows.medium,
+    borderColor: Colors.borderLight,
   },
-  tabItem: {
+  item: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 6,
+    gap: 2,
   },
-  iconWrapper: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+  iconWrap: {
+    width: 42,
+    height: 30,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 2,
+    borderRadius: 12,
   },
-  activeIconWrapper: {
-    backgroundColor: 'rgba(0, 109, 119, 0.1)',
+  iconWrapActive: {
+    backgroundColor: Colors.primaryLight,
   },
-  tabLabel: {
+  label: {
     fontSize: 10,
+    fontWeight: '500',
+    color: Colors.textMuted,
+  },
+  labelActive: {
+    color: Colors.primary,
+    fontWeight: '700',
   },
 });
