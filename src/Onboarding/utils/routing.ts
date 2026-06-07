@@ -3,7 +3,7 @@ import type { OnboardingStatus, OnboardingStep } from '../../Auth/Store';
 export function routeToOnboardingStep(
   step: OnboardingStep | null,
   status: OnboardingStatus | null,
-): string {
+): any {
   if (status === 'approved') return '/(tabs)/home';
   if (status === 'under_review' || status === 'rejected') return '/(auth)/onboarding-under-review';
 

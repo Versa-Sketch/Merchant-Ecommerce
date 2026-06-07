@@ -8,6 +8,7 @@ import { useStores } from '../../Common/hooks/useStores';
 import { Colors } from '../../theme/colors';
 import StepHeader from '../Components/StepHeader';
 import { routeToOnboardingStep } from '../utils/routing';
+import { useOnboardingBack } from '../hooks/useOnboardingBack';
 
 type BusinessType = 'individual' | 'company' | 'partnership';
 
@@ -23,6 +24,12 @@ export default observer(function BusinessTypeRoute() {
   const [touched, setTouched] = useState(false);
   const isLoading = onboardingStore.stepState === 'submitting';
 
+  const handleBack = () => {
+    router.replace('/(auth)/onboarding-shop-details');
+  };
+
+  useOnboardingBack(handleBack);
+
   const handleSubmit = async () => {
     setTouched(true);
     if (!selected || isLoading) return;
@@ -37,7 +44,7 @@ export default observer(function BusinessTypeRoute() {
         totalSteps={8}
         title="Business Type"
         subtitle="This determines which documents you'll need to provide."
-        onBack={() => router.back()}
+        onBack={handleBack}
       />
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.content}>

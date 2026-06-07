@@ -69,7 +69,7 @@ export default StyleSheet.create({
   ctaText: { fontSize: 16, fontWeight: '700', color: Colors.white },
   ctaTextDisabled: { color: Colors.textMuted },
   successOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute', left: 0, right: 0, top: 0, bottom: 0,
     backgroundColor: Colors.surface,
     alignItems: 'center',
     justifyContent: 'center',

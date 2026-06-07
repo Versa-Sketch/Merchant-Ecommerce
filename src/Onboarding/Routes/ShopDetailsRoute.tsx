@@ -1,18 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   ActivityIndicator, KeyboardAvoidingView, Platform,
   ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { observer } from 'mobx-react-lite';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useStores } from '../../Common/hooks/useStores';
 import { Colors } from '../../theme/colors';
 import StepHeader from '../Components/StepHeader';
 import { routeToOnboardingStep } from '../utils/routing';
+import { useOnboardingBack } from '../hooks/useOnboardingBack';
 
 export default observer(function ShopDetailsRoute() {
   const { onboardingStore, sessionStore } = useStores();
+
+  // Intercept and disable back button actions on Step 1 to keep user inside the onboarding flow
+  useOnboardingBack(() => {});
 
   const [shopName, setShopName] = useState('');
   const [addressLine1, setAddressLine1] = useState('');
@@ -23,22 +27,62 @@ export default observer(function ShopDetailsRoute() {
   const [description, setDescription] = useState('');
   const [touched, setTouched] = useState(false);
 
+  const isCompleted = sessionStore.onboardingCompletedSteps.includes('SHOP_DETAILS');
+  const [originalData, setOriginalData] = useState<any>(null);
+
   const pincodeValid = /^\d{6}$/.test(pincode);
   const canSubmit = shopName.trim().length >= 2 && addressLine1.trim().length >= 5 && state.trim().length >= 2 && pincodeValid;
   const isLoading = onboardingStore.stepState === 'submitting';
 
+  useFocusEffect(
+    useCallback(() => {
+      onboardingStore.fetchShopDetails().then((data) => {
+        if (data) {
+          setShopName(data.shop_name || '');
+          setAddressLine1(data.address_line1 || '');
+          setAddressLine2(data.address_line2 || '');
+          setState(data.state || '');
+          setPincode(data.pincode || '');
+          setShopPhone(data.shop_phone_number || '');
+          setDescription(data.shop_description || '');
+          setOriginalData(data);
+        }
+      });
+    }, [])
+  );
+
   const handleSubmit = async () => {
     setTouched(true);
     if (!canSubmit || isLoading) return;
-    const ok = await onboardingStore.submitShopDetails({
-      shop_name: shopName.trim(),
-      address_line1: addressLine1.trim(),
-      address_line2: addressLine2.trim() || undefined,
-      state: state.trim(),
-      pincode: pincode.trim(),
-      shop_phone_number: shopPhone.trim() || undefined,
-      shop_description: description.trim() || undefined,
-    });
+
+    let ok = false;
+    if (isCompleted && originalData) {
+      const updates: any = {};
+      if (shopName.trim() !== originalData.shop_name) updates.shop_name = shopName.trim();
+      if (addressLine1.trim() !== originalData.address_line1) updates.address_line1 = addressLine1.trim();
+      if (addressLine2.trim() !== (originalData.address_line2 || '')) updates.address_line2 = addressLine2.trim() || null;
+      if (state.trim() !== originalData.state) updates.state = state.trim();
+      if (pincode.trim() !== originalData.pincode) updates.pincode = pincode.trim();
+      if (shopPhone.trim() !== (originalData.shop_phone_number || '')) updates.shop_phone_number = shopPhone.trim() || null;
+      if (description.trim() !== (originalData.shop_description || '')) updates.shop_description = description.trim() || null;
+
+      if (Object.keys(updates).length === 0) {
+        ok = true;
+      } else {
+        ok = await onboardingStore.patchShopDetails(updates);
+      }
+    } else {
+      ok = await onboardingStore.submitShopDetails({
+        shop_name: shopName.trim(),
+        address_line1: addressLine1.trim(),
+        address_line2: addressLine2.trim() || undefined,
+        state: state.trim(),
+        pincode: pincode.trim(),
+        shop_phone_number: shopPhone.trim() || undefined,
+        shop_description: description.trim() || undefined,
+      });
+    }
+
     if (ok) router.replace(routeToOnboardingStep(sessionStore.onboardingCurrentStep, sessionStore.onboardingStatus));
   };
 

@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
-  ActivityIndicator, ScrollView, StyleSheet, Text,
+  ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text,
   TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { observer } from 'mobx-react-lite';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { Plus, Trash2 } from 'lucide-react-native';
 import { useStores } from '../../Common/hooks/useStores';
 import { Colors } from '../../theme/colors';
@@ -13,6 +13,8 @@ import StepHeader from '../Components/StepHeader';
 import FilePickerField from '../Components/FilePickerField';
 import { routeToOnboardingStep } from '../utils/routing';
 import type { DirectorEntry } from '../Store';
+
+import { useOnboardingBack } from '../hooks/useOnboardingBack';
 
 function emptyDirector(): DirectorEntry {
   return { name: '', designation: 'director', panFile: null, aadhaarFile: null };
@@ -22,12 +24,41 @@ export default observer(function DirectorsKycRoute() {
   const { onboardingStore, sessionStore } = useStores();
   const [directors, setDirectors] = useState<DirectorEntry[]>([emptyDirector()]);
   const [touched, setTouched] = useState(false);
+  
+  const isCompleted = sessionStore.onboardingCompletedSteps.includes('DIRECTORS_KYC');
+  const isFetching = onboardingStore.fetchingState === 'loading';
   const isLoading = onboardingStore.stepState === 'submitting';
 
   const isCompany = sessionStore.onboardingBusinessType === 'company';
   const designationLabel = isCompany ? 'Director' : 'Partner';
 
+  const handleBack = () => {
+    if (isCompany) {
+      router.replace('/(auth)/onboarding-incorporation-docs');
+    } else {
+      router.replace('/(auth)/onboarding-business-registration');
+    }
+  };
+
+  useOnboardingBack(handleBack);
+
   const canSubmit = directors.every((d) => d.name.trim().length >= 2 && d.panFile && d.aadhaarFile);
+
+  useFocusEffect(
+    useCallback(() => {
+      onboardingStore.fetchDirectorsKyc().then((data) => {
+        if (data && data.length > 0) {
+          const loadedDirectors = data.map((d: any) => ({
+            name: d.name || '',
+            designation: d.designation || 'director',
+            panFile: d.pan_card ? { uri: d.pan_card, name: 'PAN Card', type: 'image/jpeg' } : null,
+            aadhaarFile: d.aadhaar_card ? { uri: d.aadhaar_card, name: 'Aadhaar Card', type: 'image/jpeg' } : null,
+          }));
+          setDirectors(loadedDirectors);
+        }
+      });
+    }, [])
+  );
 
   const updateDirector = <K extends keyof DirectorEntry>(index: number, key: K, value: DirectorEntry[K]) => {
     setDirectors((prev) => prev.map((d, i) => (i === index ? { ...d, [key]: value } : d)));
@@ -36,7 +67,27 @@ export default observer(function DirectorsKycRoute() {
   const handleSubmit = async () => {
     setTouched(true);
     if (!canSubmit || isLoading) return;
-    const ok = await onboardingStore.submitDirectorsKyc(directors);
+
+    let ok = false;
+    if (isCompleted) {
+      // Build index patches
+      const patchedDirectorsList = directors.map((d) => {
+        const patch: any = {
+          name: d.name,
+          designation: d.designation,
+        };
+        if (d.panFile && !d.panFile.uri.startsWith('http')) {
+          patch.panFile = d.panFile;
+        }
+        if (d.aadhaarFile && !d.aadhaarFile.uri.startsWith('http')) {
+          patch.aadhaarFile = d.aadhaarFile;
+        }
+        return patch;
+      });
+      ok = await onboardingStore.patchDirectorsKyc(patchedDirectorsList);
+    } else {
+      ok = await onboardingStore.submitDirectorsKyc(directors);
+    }
     if (ok) router.replace(routeToOnboardingStep(sessionStore.onboardingCurrentStep, sessionStore.onboardingStatus));
   };
 
@@ -47,80 +98,87 @@ export default observer(function DirectorsKycRoute() {
         totalSteps={9}
         title={`${designationLabel}s' KYC`}
         subtitle={`Upload PAN and Aadhaar for each ${designationLabel.toLowerCase()}.`}
-        onBack={() => router.back()}
+        onBack={handleBack}
       />
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        <View style={styles.content}>
-          {directors.map((dir, i) => (
-            <View key={i} style={styles.directorCard}>
-              <View style={styles.directorCardHeader}>
-                <Text style={styles.directorTitle}>{designationLabel} {i + 1}</Text>
-                {directors.length > 1 && (
-                  <TouchableOpacity onPress={() => setDirectors((p) => p.filter((_, idx) => idx !== i))} hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}>
-                    <Trash2 size={18} color={Colors.error} strokeWidth={2} />
-                  </TouchableOpacity>
-                )}
-              </View>
-              <Text style={styles.label}>FULL NAME *</Text>
-              <TextInput
-                style={[styles.input, touched && dir.name.trim().length < 2 ? styles.inputError : null]}
-                value={dir.name}
-                onChangeText={(t) => updateDirector(i, 'name', t)}
-                placeholder={`${designationLabel} name`}
-                placeholderTextColor={Colors.textMuted}
-              />
-              {touched && dir.name.trim().length < 2 ? <Text style={styles.fieldError}>Required</Text> : null}
-              <Text style={[styles.label, { marginTop: 12 }]}>DESIGNATION</Text>
-              <View style={styles.toggleRow}>
-                {(['director', 'partner'] as const).map((d) => (
-                  <TouchableOpacity
-                    key={d}
-                    style={[styles.toggleBtn, dir.designation === d && styles.toggleBtnSelected]}
-                    onPress={() => updateDirector(i, 'designation', d)}
-                  >
-                    <Text style={[styles.toggleText, dir.designation === d && styles.toggleTextSelected]}>
-                      {d.charAt(0).toUpperCase() + d.slice(1)}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-              <View style={{ marginTop: 12 }}>
-                <FilePickerField
-                  label="PAN Card"
-                  value={dir.panFile}
-                  onChange={(f) => updateDirector(i, 'panFile', f)}
-                  accept="any"
-                  required
-                  error={touched && !dir.panFile ? 'Required' : null}
-                />
-                <FilePickerField
-                  label="Aadhaar Card"
-                  value={dir.aadhaarFile}
-                  onChange={(f) => updateDirector(i, 'aadhaarFile', f)}
-                  accept="any"
-                  required
-                  error={touched && !dir.aadhaarFile ? 'Required' : null}
-                />
-              </View>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        {isFetching ? (
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <ActivityIndicator size="large" color={Colors.primary} />
+          </View>
+        ) : (
+          <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+            <View style={styles.content}>
+              {directors.map((dir, i) => (
+                <View key={i} style={styles.directorCard}>
+                  <View style={styles.directorCardHeader}>
+                    <Text style={styles.directorTitle}>{designationLabel} {i + 1}</Text>
+                    {directors.length > 1 && (
+                      <TouchableOpacity onPress={() => setDirectors((p) => p.filter((_, idx) => idx !== i))} hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}>
+                        <Trash2 size={18} color={Colors.error} strokeWidth={2} />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                  <Text style={styles.label}>FULL NAME *</Text>
+                  <TextInput
+                    style={[styles.input, touched && dir.name.trim().length < 2 ? styles.inputError : null]}
+                    value={dir.name}
+                    onChangeText={(t) => updateDirector(i, 'name', t)}
+                    placeholder={`${designationLabel} name`}
+                    placeholderTextColor={Colors.textMuted}
+                  />
+                  {touched && dir.name.trim().length < 2 ? <Text style={styles.fieldError}>Required</Text> : null}
+                  <Text style={[styles.label, { marginTop: 12 }]}>DESIGNATION</Text>
+                  <View style={styles.toggleRow}>
+                    {(['director', 'partner'] as const).map((d) => (
+                      <TouchableOpacity
+                        key={d}
+                        style={[styles.toggleBtn, dir.designation === d && styles.toggleBtnSelected]}
+                        onPress={() => updateDirector(i, 'designation', d)}
+                      >
+                        <Text style={[styles.toggleText, dir.designation === d && styles.toggleTextSelected]}>
+                          {d.charAt(0).toUpperCase() + d.slice(1)}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                  <View style={{ marginTop: 12 }}>
+                    <FilePickerField
+                      label="PAN Card"
+                      value={dir.panFile}
+                      onChange={(f) => updateDirector(i, 'panFile', f)}
+                      accept="any"
+                      required
+                      error={touched && !dir.panFile ? 'Required' : null}
+                    />
+                    <FilePickerField
+                      label="Aadhaar Card"
+                      value={dir.aadhaarFile}
+                      onChange={(f) => updateDirector(i, 'aadhaarFile', f)}
+                      accept="any"
+                      required
+                      error={touched && !dir.aadhaarFile ? 'Required' : null}
+                    />
+                  </View>
+                </View>
+              ))}
+
+              <TouchableOpacity style={styles.addBtn} onPress={() => setDirectors((p) => [...p, emptyDirector()])} activeOpacity={0.75}>
+                <Plus size={18} color={Colors.primary} strokeWidth={2.5} />
+                <Text style={styles.addBtnText}>Add {designationLabel}</Text>
+              </TouchableOpacity>
+
+              {onboardingStore.stepError ? (
+                <View style={styles.errorBox}><Text style={styles.errorBoxText}>{onboardingStore.stepError}</Text></View>
+              ) : null}
             </View>
-          ))}
-
-          <TouchableOpacity style={styles.addBtn} onPress={() => setDirectors((p) => [...p, emptyDirector()])} activeOpacity={0.75}>
-            <Plus size={18} color={Colors.primary} strokeWidth={2.5} />
-            <Text style={styles.addBtnText}>Add {designationLabel}</Text>
+          </ScrollView>
+        )}
+        <View style={styles.footer}>
+          <TouchableOpacity style={[styles.cta, !isLoading ? styles.ctaEnabled : styles.ctaDisabled]} onPress={handleSubmit} disabled={isLoading || isFetching} activeOpacity={0.88}>
+            {isLoading ? <ActivityIndicator color={Colors.white} /> : <Text style={styles.ctaText}>Continue</Text>}
           </TouchableOpacity>
-
-          {onboardingStore.stepError ? (
-            <View style={styles.errorBox}><Text style={styles.errorBoxText}>{onboardingStore.stepError}</Text></View>
-          ) : null}
         </View>
-      </ScrollView>
-
-      <View style={styles.footer}>
-        <TouchableOpacity style={[styles.cta, !isLoading ? styles.ctaEnabled : styles.ctaDisabled]} onPress={handleSubmit} disabled={isLoading} activeOpacity={0.88}>
-          {isLoading ? <ActivityIndicator color={Colors.white} /> : <Text style={styles.ctaText}>Continue</Text>}
-        </TouchableOpacity>
-      </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 });

@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { observer } from 'mobx-react-lite';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { Check } from 'lucide-react-native';
 import { useStores } from '../../Common/hooks/useStores';
 import { Colors } from '../../theme/colors';
@@ -10,6 +10,8 @@ import StepHeader from '../Components/StepHeader';
 import FilePickerField from '../Components/FilePickerField';
 import { routeToOnboardingStep } from '../utils/routing';
 import type { PickedFile } from '../Store';
+
+import { useOnboardingBack } from '../hooks/useOnboardingBack';
 
 type ProofType = 'electricity_bill' | 'rent_agreement' | 'property_tax_receipt';
 
@@ -23,14 +25,58 @@ export default observer(function AddressProofRoute() {
   const { onboardingStore, sessionStore } = useStores();
   const [proofType, setProofType] = useState<ProofType | null>(null);
   const [docFile, setDocFile] = useState<PickedFile | null>(null);
+  
+  const [existingDoc, setExistingDoc] = useState<string | null>(null);
+  const [originalType, setOriginalType] = useState<ProofType | null>(null);
+
   const [touched, setTouched] = useState(false);
+  const isCompleted = sessionStore.onboardingCompletedSteps.includes('ADDRESS_PROOF');
+  const isFetching = onboardingStore.fetchingState === 'loading';
   const isLoading = onboardingStore.stepState === 'submitting';
-  const canSubmit = !!proofType && !!docFile;
+
+  const handleBack = () => {
+    router.replace('/(auth)/onboarding-bank-details');
+  };
+
+  useOnboardingBack(handleBack);
+
+  const canSubmit = !!proofType && (!!docFile || !!existingDoc);
+
+  useFocusEffect(
+    useCallback(() => {
+      onboardingStore.fetchAddressProof().then((data) => {
+        if (data) {
+          setProofType(data.address_proof_type);
+          setOriginalType(data.address_proof_type);
+          if (data.address_proof_document) {
+            setExistingDoc(data.address_proof_document);
+            setDocFile({ uri: data.address_proof_document, name: 'Address Proof', type: 'image/jpeg' });
+          }
+        }
+      });
+    }, [])
+  );
 
   const handleSubmit = async () => {
     setTouched(true);
     if (!canSubmit || isLoading) return;
-    const ok = await onboardingStore.submitAddressProof(proofType!, docFile!);
+
+    let ok = false;
+    if (isCompleted) {
+      const isTypeChanged = proofType !== originalType;
+      const isFileChanged = docFile && !docFile.uri.startsWith('http');
+
+      if (!isTypeChanged && !isFileChanged) {
+        ok = true;
+      } else {
+        ok = await onboardingStore.patchAddressProof(
+          isTypeChanged ? proofType! : undefined,
+          isFileChanged ? docFile! : undefined,
+        );
+      }
+    } else {
+      ok = await onboardingStore.submitAddressProof(proofType!, docFile!);
+    }
     if (ok) router.replace(routeToOnboardingStep(sessionStore.onboardingCurrentStep, sessionStore.onboardingStatus));
   };
 
@@ -39,35 +85,43 @@ export default observer(function AddressProofRoute() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
-      <StepHeader currentStep={stepNum} totalSteps={totalSteps} title="Address Proof" subtitle="Prove the physical address of your shop." onBack={() => router.back()} />
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        <View style={styles.content}>
-          <Text style={styles.sectionLabel}>DOCUMENT TYPE *</Text>
-          {touched && !proofType ? <Text style={styles.fieldError}>Please select a document type</Text> : null}
-          {PROOF_OPTIONS.map((opt) => {
-            const selected = proofType === opt.type;
-            return (
-              <TouchableOpacity key={opt.type} style={[styles.optionRow, selected && styles.optionRowSelected]} onPress={() => setProofType(opt.type)} activeOpacity={0.8}>
-                <Text style={[styles.optionLabel, selected && styles.optionLabelSelected]}>{opt.label}</Text>
-                <View style={[styles.radio, selected && styles.radioSelected]}>
-                  {selected && <Check size={12} color={Colors.white} strokeWidth={3} />}
-                </View>
-              </TouchableOpacity>
-            );
-          })}
-          <View style={{ marginTop: 20 }}>
-            <FilePickerField label="Upload Document" value={docFile} onChange={setDocFile} accept="any" required hint="Clear photo or scan (PDF/JPG/PNG)" error={touched && !docFile ? 'Required' : null} />
+      <StepHeader currentStep={stepNum} totalSteps={totalSteps} title="Address Proof" subtitle="Prove the physical address of your shop." onBack={handleBack} />
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        {isFetching ? (
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <ActivityIndicator size="large" color={Colors.primary} />
           </View>
-          {onboardingStore.stepError ? (
-            <View style={styles.errorBox}><Text style={styles.errorBoxText}>{onboardingStore.stepError}</Text></View>
-          ) : null}
+        ) : (
+          <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+            <View style={styles.content}>
+              <Text style={styles.sectionLabel}>DOCUMENT TYPE *</Text>
+              {touched && !proofType ? <Text style={styles.fieldError}>Please select a document type</Text> : null}
+              {PROOF_OPTIONS.map((opt) => {
+                const selected = proofType === opt.type;
+                return (
+                  <TouchableOpacity key={opt.type} style={[styles.optionRow, selected && styles.optionRowSelected]} onPress={() => setProofType(opt.type)} activeOpacity={0.8}>
+                    <Text style={[styles.optionLabel, selected && styles.optionLabelSelected]}>{opt.label}</Text>
+                    <View style={[styles.radio, selected && styles.radioSelected]}>
+                      {selected && <Check size={12} color={Colors.white} strokeWidth={3} />}
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+              <View style={{ marginTop: 20 }}>
+                <FilePickerField label="Upload Document" value={docFile} onChange={setDocFile} accept="any" required hint="Clear photo or scan (PDF/JPG/PNG)" error={touched && !docFile ? 'Required' : null} />
+              </View>
+              {onboardingStore.stepError ? (
+                <View style={styles.errorBox}><Text style={styles.errorBoxText}>{onboardingStore.stepError}</Text></View>
+              ) : null}
+            </View>
+          </ScrollView>
+        )}
+        <View style={styles.footer}>
+          <TouchableOpacity style={[styles.cta, !isLoading ? styles.ctaEnabled : styles.ctaDisabled]} onPress={handleSubmit} disabled={isLoading || isFetching} activeOpacity={0.88}>
+            {isLoading ? <ActivityIndicator color={Colors.white} /> : <Text style={styles.ctaText}>Continue</Text>}
+          </TouchableOpacity>
         </View>
-      </ScrollView>
-      <View style={styles.footer}>
-        <TouchableOpacity style={[styles.cta, !isLoading ? styles.ctaEnabled : styles.ctaDisabled]} onPress={handleSubmit} disabled={isLoading} activeOpacity={0.88}>
-          {isLoading ? <ActivityIndicator color={Colors.white} /> : <Text style={styles.ctaText}>Continue</Text>}
-        </TouchableOpacity>
-      </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 });

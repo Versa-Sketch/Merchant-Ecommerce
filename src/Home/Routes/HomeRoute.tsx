@@ -219,8 +219,9 @@ export default observer(function HomeScreen() {
           recentOrders.map((order) => {
             const isNew = order.status === 'New Orders';
             const isDelivered = order.status === 'Delivered';
-            const statusLabel = isNew ? 'New' : order.status === 'Preparing' ? 'Preparing' : isDelivered ? 'Delivered' : 'Cancelled';
-            const statusColor = isNew ? Colors.accent : order.status === 'Preparing' ? Colors.info : isDelivered ? Colors.success : Colors.error;
+            const isPreparing = order.status === 'Packed' || order.status === 'Accepted';
+            const statusLabel = isNew ? 'New' : isPreparing ? 'Preparing' : isDelivered ? 'Delivered' : 'Cancelled';
+            const statusColor = isNew ? Colors.accent : isPreparing ? Colors.info : isDelivered ? Colors.success : Colors.error;
             return (
               <View key={order.id} style={[styles.card, styles.orderCard]}>
                 <View style={styles.orderTop}>
