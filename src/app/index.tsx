@@ -5,6 +5,7 @@ import { observer } from 'mobx-react-lite';
 import Svg, { Circle, Rect } from 'react-native-svg';
 import { useStores } from '../Common/hooks/useStores';
 import { Colors } from '../theme/colors';
+import { routeToOnboardingStep } from '../Onboarding/utils/routing';
 
 function ShopkeeperLogo({ size = 72 }: { size?: number }) {
   const r = size / 2;
@@ -25,7 +26,7 @@ function ShopkeeperLogo({ size = 72 }: { size?: number }) {
 }
 
 const SplashScreen = observer(function SplashScreen() {
-  const { sessionStore } = useStores();
+  const { sessionStore, shopSetupStore } = useStores();
 
   const logoScale = useRef(new Animated.Value(0.4)).current;
   const logoOpacity = useRef(new Animated.Value(0)).current;
@@ -70,9 +71,15 @@ const SplashScreen = observer(function SplashScreen() {
           toValue: 0,
           duration: 350,
           useNativeDriver: true,
-        }).start(() => {
+        }).start(async () => {
           if (sessionStore.isAuthenticated) {
-            router.replace('/(tabs)/home');
+            await sessionStore.fetchOnboardingStatus();
+            if (sessionStore.onboardingStatus === 'approved') {
+              await shopSetupStore.fetchMyShopTypes();
+              router.replace(shopSetupStore.hasChosenTypes ? '/(tabs)/home' : '/(auth)/shop-type-selection');
+            } else {
+              router.replace(routeToOnboardingStep(sessionStore.onboardingCurrentStep, sessionStore.onboardingStatus) as Parameters<typeof router.replace>[0]);
+            }
           } else {
             router.replace('/(auth)/welcome');
           }

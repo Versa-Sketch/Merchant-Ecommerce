@@ -10,12 +10,13 @@ import { router } from 'expo-router';
 import { ChevronLeft, AlertCircle, Check, RefreshCw } from 'lucide-react-native';
 import { useStores } from '../../Common/hooks/useStores';
 import { Colors } from '../../theme/colors';
+import { routeToOnboardingStep } from '../../Onboarding/utils/routing';
 import styles from './OTP.styles';
 
 const OTP_LENGTH = 4;
 
 export default observer(function OTPRoute() {
-  const { sessionStore } = useStores();
+  const { sessionStore, shopSetupStore } = useStores();
   const insets = useSafeAreaInsets();
 
   const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(''));
@@ -125,9 +126,14 @@ export default observer(function OTPRoute() {
 
     triggerSuccess();
 
-    // Always go to dashboard — onboarding flow will be integrated later
-    setTimeout(() => {
-      router.replace('/(tabs)/home');
+    setTimeout(async () => {
+      await sessionStore.fetchOnboardingStatus();
+      if (sessionStore.onboardingStatus === 'approved') {
+        await shopSetupStore.fetchMyShopTypes();
+        router.replace(shopSetupStore.hasChosenTypes ? '/(tabs)/home' : '/(auth)/shop-type-selection');
+      } else {
+        router.replace(routeToOnboardingStep(sessionStore.onboardingCurrentStep, sessionStore.onboardingStatus) as Parameters<typeof router.replace>[0]);
+      }
     }, 1200);
   };
 

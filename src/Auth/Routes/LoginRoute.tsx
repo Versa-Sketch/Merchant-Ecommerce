@@ -17,40 +17,29 @@ export default observer(function LoginRoute() {
   const { sessionStore } = useStores();
   const insets = useSafeAreaInsets();
 
-  const [name, setName] = useState(sessionStore.fullName);
-  const [nameFocused, setNameFocused] = useState(false);
   const [phoneFocused, setPhoneFocused] = useState(false);
-  const [touched, setTouched] = useState({ name: false, phone: false });
+  const [touched, setTouched] = useState(false);
 
-  const nameRef = useRef<TextInput>(null);
   const phoneRef = useRef<TextInput>(null);
   const btnScale = useRef(new Animated.Value(1)).current;
 
   const { valid: phoneValid, error: phoneError } = validateIndianPhone(sessionStore.phone);
-  const nameValid = name.trim().length >= 2;
-  const canSubmit = phoneValid && nameValid;
-  const isLoading = sessionStore.otpState === 'sending';
-  const apiError = sessionStore.otpState === 'error' ? sessionStore.otpError : null;
+  const isLoading = sessionStore.loginState === 'loading';
+  const apiError = sessionStore.loginState === 'error' ? sessionStore.loginError : null;
 
-  const showNameError = touched.name && !nameValid;
-  const showPhoneError = touched.phone && !phoneValid && !!sessionStore.phone;
+  const showPhoneError = touched && !phoneValid && !!sessionStore.phone;
 
   useEffect(() => {
-    const t = setTimeout(() => nameRef.current?.focus(), 400);
+    const t = setTimeout(() => phoneRef.current?.focus(), 400);
     return () => clearTimeout(t);
   }, []);
 
   const handlePressIn = () => {
-    if (!canSubmit) return;
+    if (!phoneValid) return;
     Animated.spring(btnScale, { toValue: 0.97, useNativeDriver: true, speed: 50, bounciness: 0 }).start();
   };
   const handlePressOut = () => {
     Animated.spring(btnScale, { toValue: 1, useNativeDriver: true, speed: 30, bounciness: 4 }).start();
-  };
-
-  const handleNameChange = (text: string) => {
-    setName(text);
-    sessionStore.setFullName(text);
   };
 
   const handlePhoneChange = (text: string) => {
@@ -59,11 +48,13 @@ export default observer(function LoginRoute() {
   };
 
   const handleContinue = async () => {
-    setTouched({ name: true, phone: true });
-    if (!canSubmit || isLoading) return;
-    sessionStore.resetOTPState();
-    const sent = await sessionStore.sendOTP();
-    if (sent) router.push('/(auth)/otp');
+    setTouched(true);
+    if (!phoneValid || isLoading) return;
+    sessionStore.resetLoginState();
+    const ok = await sessionStore.login();
+    if (!ok) return;
+    // Server sends OTP — go to OTP screen to verify
+    router.push('/(auth)/otp');
   };
 
   return (
@@ -87,43 +78,14 @@ export default observer(function LoginRoute() {
 
           {/* Content */}
           <View style={styles.content}>
-            <Text style={styles.eyebrow}>Sign up or Sign in</Text>
-            <Text style={styles.title}>Let's get started</Text>
+            <Text style={styles.eyebrow}>Welcome back</Text>
+            <Text style={styles.title}>Sign in</Text>
             <Text style={styles.subtitle}>
-              Enter your name and mobile number. We'll send a one-time verification code.
+              Enter your registered mobile number to continue.
             </Text>
 
-            {/* Full Name */}
-            <Text style={[styles.inputLabel, { marginTop: 4 }]}>FULL NAME</Text>
-            <View
-              style={[
-                styles.textInputBox,
-                nameFocused && styles.textInputBoxFocused,
-                showNameError && styles.textInputBoxError,
-              ]}
-            >
-              <TextInput
-                ref={nameRef}
-                style={styles.textInputField}
-                value={name}
-                onChangeText={handleNameChange}
-                onFocus={() => setNameFocused(true)}
-                onBlur={() => { setNameFocused(false); setTouched((p) => ({ ...p, name: true })); }}
-                onSubmitEditing={() => phoneRef.current?.focus()}
-                placeholder="Priya Sharma"
-                placeholderTextColor={Colors.textMuted}
-                returnKeyType="next"
-                autoCapitalize="words"
-                autoCorrect={false}
-                textContentType="name"
-              />
-            </View>
-            {showNameError ? (
-              <Text style={styles.errorText}>Please enter your full name</Text>
-            ) : null}
-
             {/* Mobile Number */}
-            <Text style={[styles.inputLabel, { marginTop: 20 }]}>MOBILE NUMBER</Text>
+            <Text style={[styles.inputLabel, { marginTop: 4 }]}>MOBILE NUMBER</Text>
             <TouchableOpacity
               activeOpacity={1}
               onPress={() => phoneRef.current?.focus()}
@@ -143,7 +105,7 @@ export default observer(function LoginRoute() {
                 value={sessionStore.phone}
                 onChangeText={handlePhoneChange}
                 onFocus={() => setPhoneFocused(true)}
-                onBlur={() => { setPhoneFocused(false); setTouched((p) => ({ ...p, phone: true })); }}
+                onBlur={() => { setPhoneFocused(false); setTouched(true); }}
                 onSubmitEditing={handleContinue}
                 keyboardType="number-pad"
                 maxLength={10}
@@ -173,22 +135,22 @@ export default observer(function LoginRoute() {
             <TouchableOpacity
               style={[
                 styles.cta,
-                canSubmit && !isLoading ? styles.ctaEnabled : styles.ctaDisabled,
+                phoneValid && !isLoading ? styles.ctaEnabled : styles.ctaDisabled,
               ]}
               onPress={handleContinue}
               onPressIn={handlePressIn}
               onPressOut={handlePressOut}
-              disabled={!canSubmit || isLoading}
+              disabled={!phoneValid || isLoading}
               activeOpacity={1}
             >
               {isLoading ? (
                 <ActivityIndicator color={Colors.white} size="small" />
               ) : (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <Text style={[styles.ctaText, !canSubmit && styles.ctaTextDisabled]}>
-                    Send OTP
+                  <Text style={[styles.ctaText, !phoneValid && styles.ctaTextDisabled]}>
+                    Sign In
                   </Text>
-                  {canSubmit && <ArrowRight size={18} color={Colors.white} strokeWidth={2.5} />}
+                  {phoneValid && <ArrowRight size={18} color={Colors.white} strokeWidth={2.5} />}
                 </View>
               )}
             </TouchableOpacity>
