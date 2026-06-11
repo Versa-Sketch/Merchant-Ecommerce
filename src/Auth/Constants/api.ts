@@ -5,10 +5,13 @@ const BASE = (
   "https://local-ecommerce-backend-production.up.railway.app/api"
 ).replace(/\/$/, "");
 
+export const API_BASE = BASE;
+
 export const AUTH_ENDPOINTS = {
   REGISTER: `${BASE}/accounts/register/`,
   VERIFY_OTP: `${BASE}/accounts/verify-otp/`,
   LOGIN: `${BASE}/accounts/login/`,
+  ME: `${BASE}/accounts/me/`,
 } as const;
 
 export const SHOP_ENDPOINTS = {

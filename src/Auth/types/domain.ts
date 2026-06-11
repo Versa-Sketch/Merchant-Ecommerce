@@ -1,6 +1,19 @@
 export type AuthFlowScreen = 'welcome' | 'login' | 'otp' | 'create-account' | 'store-details' | 'success';
 export type OTPState = 'idle' | 'sending' | 'sent' | 'verifying' | 'verified' | 'error';
 
+// Authenticated user profile — returned by GET /accounts/me/.
+// This is the single source of truth for "who is logged in"; never trust
+// locally-derived/cached fields over a fresh response from this endpoint.
+export interface UserProfile {
+  id: string;
+  phone_number: string;
+  full_name: string;
+  role: string;
+  is_verified: boolean;
+  is_active: boolean;
+  shop_id: string | null;
+}
+
 export interface PhoneValidationResult {
   valid: boolean;
   error: string | null;

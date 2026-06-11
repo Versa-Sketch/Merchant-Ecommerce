@@ -73,6 +73,12 @@ const SplashScreen = observer(function SplashScreen() {
           useNativeDriver: true,
         }).start(async () => {
           if (sessionStore.isAuthenticated) {
+            await sessionStore.fetchUser();
+            if (!sessionStore.isAuthenticated) {
+              // fetchUser logged us out (expired/invalid session)
+              router.replace('/(auth)/welcome');
+              return;
+            }
             await sessionStore.fetchOnboardingStatus();
             if (sessionStore.onboardingStatus === 'approved') {
               await shopSetupStore.fetchMyShopTypes();

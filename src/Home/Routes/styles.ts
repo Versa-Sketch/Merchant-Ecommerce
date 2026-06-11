@@ -16,6 +16,8 @@ export default StyleSheet.create({
   logoLetter: { fontSize: 19, fontWeight: '800', color: Colors.white },
   greeting: { fontSize: 12, color: 'rgba(255,255,255,0.65)', fontWeight: '500' },
   storeName: { fontSize: 16, fontWeight: '700', color: Colors.white, marginTop: 1 },
+  roleBadge: { alignSelf: 'flex-start', backgroundColor: 'rgba(255,255,255,0.16)', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2, marginTop: 4 },
+  roleBadgeText: { fontSize: 9, fontWeight: '700', color: 'rgba(255,255,255,0.85)', letterSpacing: 0.4 },
   headerBtn: { width: 38, height: 38, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.13)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)' },
   metricStrip: { flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 16, paddingVertical: 14, paddingHorizontal: 8, borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)' },
   metricItem: { flex: 1, alignItems: 'center' },

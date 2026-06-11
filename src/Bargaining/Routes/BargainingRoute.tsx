@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Alert, TextInput, KeyboardAvoidingView, Platform, Animated } from 'react-native';
 import { observer } from 'mobx-react-lite';
-import { AlertTriangle, MessageSquare, Send, TrendingDown } from 'lucide-react-native';
+import { MessageSquare, Send, TrendingDown } from 'lucide-react-native';
 import { useStores } from '../../Common/hooks/useStores';
 import { Colors } from '../../theme/colors';
 import { Button } from '../../components/ui/Button';
@@ -18,7 +18,7 @@ function formatTimer(seconds: number) {
 }
 
 export default observer(function BargainingScreen() {
-  const { bargainingStore, productsStore } = useStores();
+  const { bargainingStore } = useStores();
   const [selectedSection, setSelectedSection] = useState<(typeof SECTIONS)[number]>('Pending');
   const [selectedBargainId, setSelectedBargainId] = useState<string | null>(null);
   const [counterId, setCounterId] = useState<string | null>(null);
@@ -141,21 +141,6 @@ export default observer(function BargainingScreen() {
           })
         )}
 
-        {selectedSection === 'Pending' && productsStore.lowStockProducts.length > 0 ? (
-          <View style={styles.alertSection}>
-            <Text style={styles.alertSectionTitle}>Low stock alerts</Text>
-            {productsStore.lowStockProducts.slice(0, 4).map((product) => (
-              <View key={product.id} style={styles.alertCard}>
-                <AlertTriangle size={18} color={Colors.warning} style={{ flexShrink: 0 }} />
-                <View style={styles.alertMeta}>
-                  <Text style={styles.alertName}>{product.name}</Text>
-                  <Text style={styles.alertSub}>{product.stock} units left · Expires {product.expiryDate}</Text>
-                </View>
-                <Button label="Restock" variant="view" size="sm" onPress={() => productsStore.adjustStock(product.id, product.stock + 20)} />
-              </View>
-            ))}
-          </View>
-        ) : null}
         <View style={{ height: 100 }} />
       </ScrollView>
 

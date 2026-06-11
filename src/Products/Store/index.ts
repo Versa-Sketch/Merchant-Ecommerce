@@ -1,63 +1,284 @@
-import { makeAutoObservable } from 'mobx';
-import { Product } from '../Models/Product';
-import { productFixtures } from '../Services/index.fixture';
+import { makeAutoObservable, runInAction } from 'mobx';
+import type { SessionStore } from '../../Auth/Store';
+import { USE_FIXTURES } from '../../Common/services/config';
+import { ProductsApiService } from '../Services/index.api';
+import { ProductsFixtureService } from '../Services/index.fixture';
+import type { IProductsService } from '../Services';
+import type {
+  CategoryListItem,
+  CategoryRef,
+  CategoryUnit,
+  CreateProductInput,
+  CreateVariantInput,
+  ProductDetail,
+  ProductSummary,
+  SubcategoryRef,
+  UpdateProductInput,
+  UpdateVariantInput,
+} from '../types/domain';
+
+export type LoadState = 'idle' | 'loading' | 'error';
+
+export interface MutationResult {
+  ok: boolean;
+  message: string;
+}
 
 export class ProductsStore {
-  products: Product[] = [];
+  // Listing — GET /shops/shop-owner/products/
+  products: ProductSummary[] = [];
+  listState: LoadState = 'idle';
+  listError: string | null = null;
+  listFetched = false;
 
-  constructor() {
-    this.products = productFixtures.map((data) => new Product(data));
+  // Detail — GET /shops/shop-owner/products/{id}/
+  detail: ProductDetail | null = null;
+  detailState: LoadState = 'idle';
+  detailError: string | null = null;
+
+  // Category options for product forms — GET /shops/shop-owner/categories/
+  categories: CategoryListItem[] = [];
+  categoriesState: LoadState = 'idle';
+
+  // Subcategories per category — GET /shops/shop-owner/categories/{id}/
+  subcategoriesByCategory: Record<string, SubcategoryRef[]> = {};
+  subcategoriesLoadingFor: string | null = null;
+  subcategoriesError: string | null = null;
+
+  // Valid units per category — GET /shops/categories/{id}/units/
+  unitsByCategory: Record<string, CategoryUnit[]> = {};
+  unitsLoadingFor: string | null = null;
+  unitsError: string | null = null;
+
+  saving = false;
+
+  private service: IProductsService;
+
+  constructor(session: SessionStore, service?: IProductsService) {
+    this.service = service ?? (USE_FIXTURES ? new ProductsFixtureService() : new ProductsApiService(session));
     makeAutoObservable(this);
   }
 
-  get activeProducts() {
-    return this.products.filter((p) => p.status === 'Active');
+  // ── Derived ───────────────────────────────────────────────────────────────
+
+  get activeCount() {
+    return this.products.filter((p) => p.is_active).length;
   }
 
-  get lowStockProducts() {
-    return this.products.filter((p) => p.status === 'Low Stock');
+  get inactiveCount() {
+    return this.products.filter((p) => !p.is_active).length;
   }
 
-  get outOfStockProducts() {
-    return this.products.filter((p) => p.status === 'Out Of Stock');
+  /** Unique categories present in the loaded product list (for the filter rail). */
+  get listCategories(): CategoryRef[] {
+    const seen = new Map<string, CategoryRef>();
+    this.products.forEach((p) => {
+      if (p.category && !seen.has(p.category.id)) seen.set(p.category.id, p.category);
+    });
+    return [...seen.values()];
   }
 
-  get hiddenProducts() {
-    return this.products.filter((p) => p.status === 'Hidden');
+  unitsFor(categoryId: string | null): CategoryUnit[] {
+    return categoryId ? (this.unitsByCategory[categoryId] ?? []) : [];
   }
 
-  addProduct(product: {
-    name: string;
-    description: string;
-    category: string;
-    mrp: number;
-    sellingPrice: number;
-    gst: number;
-    stock: number;
-    image: string;
-    startDate: string;
-    expiryDate: string;
-    validityDate: string;
-    showUntilDays: number;
-  }) {
-    const id = `PRD-${1000 + this.products.length + 1}`;
-    const status = product.stock === 0 ? 'Out Of Stock' : product.stock < 10 ? 'Low Stock' : 'Active';
-    this.products.push(new Product({ id, ...product, status }));
+  subcategoriesFor(categoryId: string | null): SubcategoryRef[] {
+    return categoryId ? (this.subcategoriesByCategory[categoryId] ?? []) : [];
   }
 
-  deleteProduct(id: string) {
-    const index = this.products.findIndex((p) => p.id === id);
-    if (index !== -1) this.products.splice(index, 1);
+  // ── Products ──────────────────────────────────────────────────────────────
+
+  async fetchProducts(): Promise<void> {
+    runInAction(() => {
+      this.listState = 'loading';
+      this.listError = null;
+    });
+    const res = await this.service.listProducts();
+    runInAction(() => {
+      if (res.ok) {
+        this.products = res.data ?? [];
+        this.listState = 'idle';
+        this.listFetched = true;
+      } else {
+        this.listState = 'error';
+        this.listError = res.message;
+      }
+    });
   }
 
-  adjustStock(id: string, amount: number) {
-    const product = this.products.find((p) => p.id === id);
-    if (product) product.updateStock(amount);
+  async fetchProduct(productId: string): Promise<void> {
+    runInAction(() => {
+      this.detailState = 'loading';
+      this.detailError = null;
+      if (this.detail?.id !== productId) this.detail = null;
+    });
+    const res = await this.service.getProduct(productId);
+    runInAction(() => {
+      if (res.ok) {
+        this.detail = res.data;
+        this.detailState = 'idle';
+      } else {
+        this.detailState = 'error';
+        this.detailError = res.message;
+      }
+    });
   }
 
-  toggleHideProduct(id: string) {
-    const product = this.products.find((p) => p.id === id);
-    if (product) product.toggleHide();
+  async createProduct(input: CreateProductInput): Promise<MutationResult> {
+    this.saving = true;
+    const res = await this.service.createProduct(input);
+    runInAction(() => {
+      this.saving = false;
+    });
+    if (res.ok) {
+      await this.fetchProducts();
+      return { ok: true, message: res.message ?? 'Product created successfully.' };
+    }
+    return { ok: false, message: res.message };
+  }
+
+  async updateProduct(productId: string, patch: UpdateProductInput): Promise<MutationResult> {
+    this.saving = true;
+    const res = await this.service.updateProduct(productId, patch);
+    runInAction(() => {
+      this.saving = false;
+      if (res.ok && res.data) {
+        this.applyProductToList(res.data);
+        if (this.detail?.id === productId) this.detail = res.data;
+      }
+    });
+    return res.ok
+      ? { ok: true, message: res.message ?? 'Product updated successfully.' }
+      : { ok: false, message: res.message };
+  }
+
+  async deactivateProduct(productId: string): Promise<MutationResult> {
+    this.saving = true;
+    const res = await this.service.deactivateProduct(productId);
+    runInAction(() => {
+      this.saving = false;
+      if (res.ok) {
+        const p = this.products.find((x) => x.id === productId);
+        if (p) p.is_active = false;
+        if (this.detail?.id === productId) this.detail.is_active = false;
+      }
+    });
+    return res.ok
+      ? { ok: true, message: res.message ?? 'Product deactivated.' }
+      : { ok: false, message: res.message };
+  }
+
+  // ── Variants ──────────────────────────────────────────────────────────────
+
+  async createVariant(productId: string, input: CreateVariantInput): Promise<MutationResult> {
+    this.saving = true;
+    const res = await this.service.createVariant(productId, input);
+    runInAction(() => {
+      this.saving = false;
+    });
+    if (res.ok) {
+      await this.fetchProduct(productId);
+      return { ok: true, message: res.message ?? 'Variant created successfully.' };
+    }
+    return { ok: false, message: res.message };
+  }
+
+  async updateVariant(
+    productId: string,
+    variantId: string,
+    patch: UpdateVariantInput,
+  ): Promise<MutationResult> {
+    this.saving = true;
+    const res = await this.service.updateVariant(productId, variantId, patch);
+    runInAction(() => {
+      this.saving = false;
+      if (res.ok && res.data && this.detail?.id === productId) {
+        const idx = this.detail.variants.findIndex((v) => v.id === variantId);
+        if (idx !== -1) this.detail.variants[idx] = res.data;
+      }
+    });
+    return res.ok
+      ? { ok: true, message: res.message ?? 'Variant updated successfully.' }
+      : { ok: false, message: res.message };
+  }
+
+  async deactivateVariant(productId: string, variantId: string): Promise<MutationResult> {
+    this.saving = true;
+    const res = await this.service.deactivateVariant(productId, variantId);
+    runInAction(() => {
+      this.saving = false;
+      if (res.ok && this.detail?.id === productId) {
+        const v = this.detail.variants.find((x) => x.id === variantId);
+        if (v) v.is_active = false;
+      }
+    });
+    return res.ok
+      ? { ok: true, message: res.message ?? 'Variant deactivated.' }
+      : { ok: false, message: res.message };
+  }
+
+  // ── Reference data ────────────────────────────────────────────────────────
+
+  async fetchCategories(): Promise<void> {
+    if (this.categoriesState === 'loading') return;
+    runInAction(() => {
+      this.categoriesState = 'loading';
+    });
+    const res = await this.service.listCategories();
+    runInAction(() => {
+      if (res.ok) {
+        this.categories = res.data ?? [];
+        this.categoriesState = 'idle';
+      } else {
+        this.categoriesState = 'error';
+      }
+    });
+  }
+
+  async fetchSubcategories(categoryId: string): Promise<void> {
+    if (this.subcategoriesByCategory[categoryId]) return; // cached
+    runInAction(() => {
+      this.subcategoriesLoadingFor = categoryId;
+      this.subcategoriesError = null;
+    });
+    const res = await this.service.getCategoryDetail(categoryId);
+    runInAction(() => {
+      this.subcategoriesLoadingFor = null;
+      if (res.ok) {
+        this.subcategoriesByCategory[categoryId] = res.data?.subcategories ?? [];
+      } else {
+        this.subcategoriesError = res.message;
+      }
+    });
+  }
+
+  async fetchCategoryUnits(categoryId: string): Promise<void> {
+    if (this.unitsByCategory[categoryId]) return; // cached
+    runInAction(() => {
+      this.unitsLoadingFor = categoryId;
+      this.unitsError = null;
+    });
+    const res = await this.service.getCategoryUnits(categoryId);
+    runInAction(() => {
+      this.unitsLoadingFor = null;
+      if (res.ok) {
+        this.unitsByCategory[categoryId] = res.data?.units ?? [];
+      } else {
+        this.unitsError = res.message;
+      }
+    });
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+
+  private applyProductToList(detail: ProductDetail) {
+    const idx = this.products.findIndex((p) => p.id === detail.id);
+    if (idx === -1) return;
+    const { variants, ...summary } = detail;
+    this.products[idx] = {
+      ...summary,
+      variant_count: variants?.length ?? this.products[idx].variant_count,
+    };
   }
 }
 

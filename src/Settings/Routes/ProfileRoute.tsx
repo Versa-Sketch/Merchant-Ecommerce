@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Image, Alert } from 'react-native';
 import { observer } from 'mobx-react-lite';
 import { router } from 'expo-router';
-import { Building2, Bell, CreditCard, FileText, HelpCircle, LogOut, Settings, ShieldCheck, ChevronRight } from 'lucide-react-native';
+import { Building2, Bell, CreditCard, FileText, HelpCircle, LogOut, Settings, ShieldCheck, LayoutGrid, ChevronRight } from 'lucide-react-native';
 import { useStores } from '../../Common/hooks/useStores';
 import { Colors } from '../../theme/colors';
 import { AnimatedScreen } from '../../Common/components/AnimatedScreen';
@@ -14,6 +14,7 @@ export default observer(function MoreScreen() {
 
   const settings = [
     { title: 'Store Profile', subtitle: 'Logo, address, public store details', icon: Building2, route: '/settings' },
+    { title: 'Edit Shop Types', subtitle: 'Update the categories your shop sells', icon: LayoutGrid, route: '/edit-shop-types' },
     { title: 'Business Settings', subtitle: 'Hours, delivery radius, order rules', icon: Settings, route: '/settings' },
     { title: 'Payout Settings', subtitle: 'Bank account and settlement schedule', icon: CreditCard, route: '/payments' },
     { title: 'Notifications', subtitle: 'Order, bargain, stock, and payout alerts', icon: Bell, route: '/settings' },
@@ -23,7 +24,7 @@ export default observer(function MoreScreen() {
 
   return (
     <AnimatedScreen style={styles.container}>
-      <ScreenHeader title="More" subtitle="Account and store settings" />
+      <ScreenHeader title="More" subtitle="Account and store settings" onBack={() => router.back()} />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <Card style={styles.profileCard}>
           <Image source={{ uri: authStore.logo }} style={styles.logo} />
@@ -36,6 +37,17 @@ export default observer(function MoreScreen() {
             </View>
           </View>
         </Card>
+
+        {sessionStore.user && (
+          <Card style={styles.accountCard}>
+            <Text style={styles.accountName}>{sessionStore.user.full_name}</Text>
+            <Text style={styles.accountPhone}>{sessionStore.user.phone_number}</Text>
+            <View style={styles.badges}>
+              <Badge label={sessionStore.user.role.replace(/_/g, ' ')} tone="primary" />
+              {sessionStore.user.is_verified && <Badge label="Verified" tone="success" />}
+            </View>
+          </Card>
+        )}
 
         <View style={styles.trustBanner}>
           <ShieldCheck size={18} color={Colors.primary} />

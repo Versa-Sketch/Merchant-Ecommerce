@@ -5,7 +5,7 @@ import {
   Animated, Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Home, ListChecks, Package, MessagesSquare, Menu } from 'lucide-react-native';
+import { Home, ListChecks, Package, MessagesSquare, Boxes } from 'lucide-react-native';
 import { Colors } from '../../theme/colors';
 
 const TABS = [
@@ -13,7 +13,7 @@ const TABS = [
   { name: 'orders/index',     label: 'Orders',   Icon: ListChecks },
   { name: 'products/index',   label: 'Products', Icon: Package },
   { name: 'bargaining/index', label: 'Bargains', Icon: MessagesSquare },
-  { name: 'profile/index',    label: 'More',     Icon: Menu },
+  { name: 'inventory/index',  label: 'Inventory', Icon: Boxes },
 ];
 
 // ── Individual tab item with press-scale micro-interaction ─────────────────

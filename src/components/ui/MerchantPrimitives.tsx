@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ViewStyle, Animated, StatusBar } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ArrowLeft } from 'lucide-react-native';
 import { Colors } from '../../theme/colors';
 import { Shadows } from '../../theme/shadows';
 
@@ -8,16 +9,28 @@ export function ScreenHeader({
   title,
   subtitle,
   right,
+  onBack,
 }: {
   title: string;
   subtitle?: string;
   right?: React.ReactNode;
+  onBack?: () => void;
 }) {
   const insets = useSafeAreaInsets();
   return (
     <>
       <StatusBar barStyle="dark-content" backgroundColor={Colors.surface} />
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
+        {onBack ? (
+          <TouchableOpacity
+            onPress={onBack}
+            style={styles.backButton}
+            activeOpacity={0.7}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <ArrowLeft size={20} color={Colors.textPrimary} />
+          </TouchableOpacity>
+        ) : null}
         <View style={{ flex: 1 }}>
           <Text style={styles.title}>{title}</Text>
           {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
@@ -157,6 +170,15 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
     backgroundColor: Colors.surface,
+    gap: 12,
+  },
+  backButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.background,
   },
   title: {
     fontSize: 20,

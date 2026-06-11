@@ -127,6 +127,7 @@ export default observer(function OTPRoute() {
     triggerSuccess();
 
     setTimeout(async () => {
+      await sessionStore.fetchUser();
       await sessionStore.fetchOnboardingStatus();
       if (sessionStore.onboardingStatus === 'approved') {
         await shopSetupStore.fetchMyShopTypes();

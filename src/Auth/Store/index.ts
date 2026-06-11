@@ -1,5 +1,7 @@
 import { makeAutoObservable, runInAction } from "mobx";
 import { AUTH_ENDPOINTS, ROLE, SHOP_ENDPOINTS } from "../Constants/api";
+import { apiRequest } from "../../Common/services/http";
+import type { UserProfile } from "../types/domain";
 
 // ── Storage abstraction ─────────────────────────────────────────────────────
 interface KVStore {
@@ -113,11 +115,26 @@ export class SessionStore {
   onboardingRejectionReason: string | null = null;
   onboardingFetched: boolean = false;
 
+  // ── Authenticated user (GET /accounts/me/) ────────────────────────────────
+  user: UserProfile | null = null;
+  userLoading: boolean = false;
+  userError: string | null = null;
+  userFetched: boolean = false;
+
   constructor() {
     makeAutoObservable(this);
     this.isAuthenticated = kv.getBoolean("isAuthenticated") ?? false;
     this.accessToken = kv.getString("accessToken") ?? null;
     this.refreshToken = kv.getString("refreshToken") ?? null;
+
+    const cachedUser = kv.getString("user");
+    if (cachedUser) {
+      try {
+        this.user = JSON.parse(cachedUser) as UserProfile;
+      } catch {
+        kv.delete("user");
+      }
+    }
   }
 
   // ── Setters ──────────────────────────────────────────────────────────────
@@ -452,6 +469,44 @@ export class SessionStore {
     return false;
   }
 
+  // ── Fetch authenticated user — GET /api/accounts/me/ ──────────────────────
+  // Source of truth for "who is logged in". On 401/403 the session is
+  // considered invalid/expired and the user is logged out.
+  async fetchUser(): Promise<boolean> {
+    if (!this.accessToken) return false;
+
+    runInAction(() => {
+      this.userLoading = true;
+      this.userError = null;
+    });
+
+    const result = await apiRequest<UserProfile>(AUTH_ENDPOINTS.ME, {
+      token: this.accessToken,
+    });
+
+    if (result.ok) {
+      runInAction(() => {
+        this.user = result.data;
+        this.userFetched = true;
+        this.userLoading = false;
+      });
+      kv.setString("user", JSON.stringify(result.data));
+      return true;
+    }
+
+    if (result.status === 401 || result.status === 403) {
+      this.logout();
+      return false;
+    }
+
+    runInAction(() => {
+      this.userError = result.message;
+      this.userFetched = true;
+      this.userLoading = false;
+    });
+    return false;
+  }
+
   resetLoginState() {
     this.loginState = "idle";
     this.loginError = null;
@@ -491,10 +546,20 @@ export class SessionStore {
       this.email = "";
       this.storeCategory = "";
       this.storeAddress = "";
+      this.user = null;
+      this.userFetched = false;
+      this.userError = null;
+      this.userLoading = false;
+      this.onboardingFetched = false;
+      this.onboardingStatus = null;
+      this.onboardingCurrentStep = null;
+      this.onboardingCompletedSteps = [];
+      this.onboardingRejectionReason = null;
     });
     kv.delete("isAuthenticated");
     kv.delete("accessToken");
     kv.delete("refreshToken");
+    kv.delete("user");
   }
 }
 

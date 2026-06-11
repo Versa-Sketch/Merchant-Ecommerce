@@ -22,8 +22,8 @@ export class RootStore {
   authStore = new AuthStore();
   dashboardStore = new DashboardStore();
   ordersStore = new OrdersStore();
-  productsStore = new ProductsStore();
-  inventoryStore = new InventoryStore();
+  productsStore: ProductsStore;
+  inventoryStore: InventoryStore;
   bargainingStore = new BargainingStore();
   deliveryStore = new DeliveryStore();
   paymentsStore = new PaymentsStore();
@@ -35,6 +35,8 @@ export class RootStore {
   constructor() {
     this.onboardingStore = new OnboardingStore(this.sessionStore);
     this.shopSetupStore = new ShopSetupStore(this.sessionStore);
+    this.productsStore = new ProductsStore(this.sessionStore);
+    this.inventoryStore = new InventoryStore(this.sessionStore);
     makeAutoObservable(this);
   }
 }

@@ -77,7 +77,7 @@ function ProgressBar({ value }: { value: number }) {
 
 export default observer(function HomeScreen() {
   const insets = useSafeAreaInsets();
-  const { authStore, dashboardStore, ordersStore } = useStores();
+  const { authStore, dashboardStore, ordersStore, sessionStore } = useStores();
   const [isOpen, setIsOpen] = useState(true);
   const [toast, setToast] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' | 'neutral' });
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -92,6 +92,7 @@ export default observer(function HomeScreen() {
   const handleReject = (id: string) => { ordersStore.rejectOrder(id); showToast('Order rejected', 'neutral'); };
 
   const storeName = authStore.storeName || 'FreshMart Hyperlocal';
+  const ownerFirstName = sessionStore.user?.full_name?.trim().split(/\s+/)[0];
   const recentOrders = ordersStore.orders.slice(0, 3);
   const pendingCount = ordersStore.newOrders.length;
   const deliveredCount = ordersStore.deliveredOrders.length;
@@ -99,7 +100,7 @@ export default observer(function HomeScreen() {
 
   const quickActions = [
     { label: 'Add Product', icon: PackagePlus, route: '/(tabs)/products' },
-    { label: 'Inventory', icon: Boxes, route: '/inventory' },
+    { label: 'Inventory', icon: Boxes, route: '/(tabs)/inventory' },
     { label: 'Offers', icon: Tags, route: '/(tabs)/products' },
     { label: 'Reports', icon: BarChart2, route: '/reports' },
     { label: 'Customers', icon: Users, route: '/customers' },
@@ -125,13 +126,20 @@ export default observer(function HomeScreen() {
           <View style={styles.heroRow}>
             <View style={styles.logoBox}><Text style={styles.logoLetter}>{storeName.charAt(0).toUpperCase()}</Text></View>
             <View style={{ flex: 1, marginLeft: 12 }}>
-              <Text style={styles.greeting}>{getGreeting()} 👋</Text>
+              <Text style={styles.greeting}>
+                {getGreeting()}{ownerFirstName ? `, ${ownerFirstName}` : ''} 👋
+              </Text>
               <Text style={styles.storeName} numberOfLines={1}>{storeName}</Text>
+              {sessionStore.user?.role && (
+                <View style={styles.roleBadge}>
+                  <Text style={styles.roleBadgeText}>{sessionStore.user.role.replace(/_/g, ' ')}</Text>
+                </View>
+              )}
             </View>
             <TouchableOpacity style={styles.headerBtn} activeOpacity={0.8}>
               <Bell size={18} color="rgba(255,255,255,0.85)" />
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.headerBtn, { marginLeft: 8 }]} activeOpacity={0.8} onPress={() => router.push('/(tabs)/profile' as any)}>
+            <TouchableOpacity style={[styles.headerBtn, { marginLeft: 8 }]} activeOpacity={0.8} onPress={() => router.push('/profile' as any)}>
               <UserCircle size={18} color="rgba(255,255,255,0.85)" />
             </TouchableOpacity>
           </View>
