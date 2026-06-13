@@ -1,10 +1,11 @@
-import type { ApiResult } from '../../Common/services/http';
+import type { ApiResult, PaginatedResult } from '../../Common/services/http';
 import type {
   AdjustStockInput,
   BatchFilters,
   CreateBatchInput,
   InventoryBatch,
   InventoryTransaction,
+  StockListParams,
   StockSummaryItem,
   UpdateBatchInput,
 } from '../types/domain';
@@ -18,7 +19,10 @@ export interface IInventoryService {
     batchId: string,
     patch: UpdateBatchInput,
   ): Promise<ApiResult<InventoryBatch>>;
-  getStockSummary(shopId: string): Promise<ApiResult<StockSummaryItem[]>>;
+  getStockSummary(
+    shopId: string,
+    params?: StockListParams,
+  ): Promise<ApiResult<PaginatedResult<StockSummaryItem>>>;
   adjustStock(shopId: string, input: AdjustStockInput): Promise<ApiResult<InventoryBatch>>;
   listTransactions(shopId: string, batchId?: string): Promise<ApiResult<InventoryTransaction[]>>;
 }

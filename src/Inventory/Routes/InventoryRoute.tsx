@@ -15,7 +15,9 @@ import {
 import { observer } from 'mobx-react-lite';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Animated,
+  FlatList,
   RefreshControl,
   ScrollView,
   StatusBar,
@@ -23,6 +25,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  type ViewToken,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AnimatedScreen } from '../../Common/components/AnimatedScreen';
@@ -34,6 +37,12 @@ import { AdjustStockModal } from '../Components/AdjustStockModal';
 import { BatchDetailModal } from '../Components/BatchDetailModal';
 import { BATCH_STATUSES, type BatchStatus, type InventoryBatch, type StockSummaryItem } from '../types/domain';
 import styles from './styles';
+
+const SEARCH_DEBOUNCE_MS = 400;
+
+// Floats the FAB above the absolutely-positioned CustomTabBar
+// (bottomOffset = max(insets.bottom, 8) + 8, bar height ~68).
+const TAB_BAR_CLEARANCE = (insetsBottom: number) => Math.max(insetsBottom, 8) + 88;
 
 type Segment = 'stock' | 'batches' | 'activity';
 type StockHealthFilter = 'all' | 'low' | 'out';
@@ -63,13 +72,19 @@ const ACTIVITY_FILTERS: { key: ActivityTypeFilter; label: string }[] = [
 
 function stockHealth(available: number, reserved: number) {
   if (available <= 0) return { dot: Colors.error, bar: Colors.error, label: 'Out of stock' as const, tone: 'out' as const };
-  if (available <= 5) return { dot: Colors.warning, bar: Colors.warning, label: 'Low stock' as const, tone: 'low' as const };
-  return { dot: Colors.success, bar: Colors.success, label: 'Healthy' as const, tone: 'healthy' as const };
+  if (available <= 5) return { dot: Colors.warning, bar: Colors.warning, label: 'Reorder soon' as const, tone: 'low' as const };
+  return { dot: Colors.success, bar: Colors.success, label: 'Healthy stock' as const, tone: 'healthy' as const };
 }
 
-function stockBarRatio(available: number, reserved: number) {
-  const target = Math.max(available + reserved, 20);
-  return Math.max(2, Math.min(100, (available / target) * 100));
+function stockAction(available: number, reserved: number) {
+  if (available <= 0) return 'Create batch now';
+  if (available <= 5) return 'Plan reorder today';
+  if (reserved > 0) return 'Monitor reservations';
+  return 'Maintain current stock';
+}
+
+function stockBarRatio(_available: number, _reserved: number) {
+  return 0;
 }
 
 function daysUntil(dateStr: string | null): number | null {
@@ -151,6 +166,7 @@ const StockCard = observer(function StockCard({
   const available = Number(item.available_stock);
   const reserved = Number(item.reserved_stock);
   const health = stockHealth(available, reserved);
+  const action = stockAction(available, reserved);
   const ratio = stockBarRatio(available, reserved);
 
   const variantBatches = useMemo(
@@ -176,6 +192,21 @@ const StockCard = observer(function StockCard({
         ) : (
           <ChevronDown size={18} color={Colors.textMuted} />
         )}
+      </View>
+
+      <View style={styles.stockInsightGrid}>
+        <View style={styles.stockInsightItem}>
+          <Text style={styles.stockMetaLabel}>AVAILABLE</Text>
+          <Text style={styles.stockMetaValue}>{item.available_stock}</Text>
+        </View>
+        <View style={styles.stockInsightItem}>
+          <Text style={styles.stockMetaLabel}>RESERVED</Text>
+          <Text style={styles.stockMetaValue}>{item.reserved_stock}</Text>
+        </View>
+        <View style={styles.stockInsightItemWide}>
+          <Text style={styles.stockMetaLabel}>SUGGESTED ACTION</Text>
+          <Text style={styles.stockActionText}>{action}</Text>
+        </View>
       </View>
 
       <View style={styles.stockBarTrack}>
@@ -392,10 +423,17 @@ export default observer(function InventoryScreen() {
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    void inventoryStore.fetchStock();
     void inventoryStore.fetchBatches();
     void inventoryStore.fetchTransactions();
   }, [inventoryStore]);
+
+  // Debounce stock search before hitting the API (also fires the initial fetch).
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      void inventoryStore.fetchStock(searchQuery.trim());
+    }, SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [inventoryStore, searchQuery]);
 
   function showToast(message: string, error = false) {
     if (toastTimer.current) clearTimeout(toastTimer.current);
@@ -427,6 +465,23 @@ export default observer(function InventoryScreen() {
     }
     return list;
   }, [inventoryStore.stock, searchQuery, stockFilter]);
+
+  // Trigger the next page as soon as the user reaches the second-to-last
+  // stock row of the currently loaded list.
+  const filteredStockRef = useRef(filteredStock);
+  filteredStockRef.current = filteredStock;
+  const stockViewabilityConfig = useRef({ itemVisiblePercentThreshold: 50 }).current;
+  const onStockViewableItemsChanged = useRef(
+    ({ viewableItems }: { viewableItems: ViewToken[] }) => {
+      const lastVisible = viewableItems[viewableItems.length - 1];
+      if (
+        lastVisible?.index != null &&
+        lastVisible.index >= filteredStockRef.current.length - 2
+      ) {
+        void inventoryStore.loadMoreStock();
+      }
+    },
+  ).current;
 
   const lowStockCount = inventoryStore.lowStockItems.length;
   const outOfStockCount = inventoryStore.outOfStockItems.length;
@@ -463,7 +518,7 @@ export default observer(function InventoryScreen() {
   // ── Header subtitle per segment ──────────────────────────────────────────
   const subtitle =
     segment === 'stock'
-      ? `${inventoryStore.stock.length} variants · ${lowStockCount + outOfStockCount} need attention`
+      ? `${inventoryStore.stockTotalCount} variants · ${lowStockCount + outOfStockCount} need attention`
       : segment === 'batches'
         ? `${inventoryStore.batches.length} batches`
         : `${inventoryStore.transactions.length} events`;
@@ -504,66 +559,39 @@ export default observer(function InventoryScreen() {
 
       {/* ── Stock Overview ──────────────────────────────────────────────── */}
       {segment === 'stock' ? (
-        <>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={{ flexGrow: 0 }}
-            contentContainerStyle={styles.kpiScroll}
-          >
-            <TouchableOpacity
-              style={[styles.kpiCard, stockFilter === 'all' && styles.kpiCardActive]}
-              onPress={() => setStockFilter('all')}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.kpiValue}>{inventoryStore.stock.length}</Text>
-              <Text style={styles.kpiLabel}>Total SKUs</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.kpiCard, stockFilter === 'low' && styles.kpiCardActive]}
-              onPress={() => setStockFilter(stockFilter === 'low' ? 'all' : 'low')}
-              activeOpacity={0.8}
-            >
-              <Text style={[styles.kpiValue, styles.kpiValueWarn]}>{lowStockCount}</Text>
-              <Text style={styles.kpiLabel}>Low Stock</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.kpiCard, stockFilter === 'out' && styles.kpiCardActive]}
-              onPress={() => setStockFilter(stockFilter === 'out' ? 'all' : 'out')}
-              activeOpacity={0.8}
-            >
-              <Text style={[styles.kpiValue, styles.kpiValueDanger]}>{outOfStockCount}</Text>
-              <Text style={styles.kpiLabel}>Out of Stock</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.kpiCard}
-              onPress={() => setSegment('batches')}
-              activeOpacity={0.8}
-            >
-              <Text style={[styles.kpiValue, styles.kpiValueInfo]}>{expiringCount}</Text>
-              <Text style={styles.kpiLabel}>Expiring ≤3d</Text>
-            </TouchableOpacity>
-          </ScrollView>
-
-          <View style={styles.searchRow}>
-            <View style={styles.searchBox}>
-              <Search size={15} color={Colors.textMuted} />
-              <TextInput
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                placeholder="Search products, variants…"
-                placeholderTextColor={Colors.textMuted}
-                style={styles.searchInput}
-              />
-              {searchQuery ? (
-                <TouchableOpacity onPress={() => setSearchQuery('')}>
-                  <X size={14} color={Colors.textMuted} />
-                </TouchableOpacity>
-              ) : null}
+        inventoryStore.stockState === 'loading' && inventoryStore.stock.length === 0 ? (
+          <View style={[styles.list, { paddingBottom: insets.bottom + 100 }]}>
+            <SkeletonRows />
+          </View>
+        ) : inventoryStore.stockState === 'error' ? (
+          <View style={[styles.list, { paddingBottom: insets.bottom + 100 }]}>
+            <View style={styles.stateWrap}>
+              <View style={[styles.stateIcon, styles.stateIconError]}>
+                <AlertCircle size={26} color={Colors.error} strokeWidth={1.8} />
+              </View>
+              <Text style={styles.stateTitle}>Couldn&apos;t load stock</Text>
+              <Text style={styles.stateSub}>{inventoryStore.stockError}</Text>
+              <Button label="Retry" onPress={() => void inventoryStore.fetchStock()} />
             </View>
           </View>
-
-          <ScrollView
+        ) : (
+          <FlatList
+            data={filteredStock}
+            keyExtractor={(item) => item.variant_id}
+            renderItem={({ item }) => (
+              <StockCard
+                item={item}
+                expanded={expandedVariant === item.variant_id}
+                onToggle={() =>
+                  setExpandedVariant(expandedVariant === item.variant_id ? null : item.variant_id)
+                }
+                onAdjust={(batchId) => {
+                  setAdjustPresetBatch(batchId);
+                  setAdjustOpen(true);
+                }}
+                onViewBatches={() => setSegment('batches')}
+              />
+            )}
             contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 100 }]}
             showsVerticalScrollIndicator={false}
             refreshControl={
@@ -573,19 +601,70 @@ export default observer(function InventoryScreen() {
                 tintColor={Colors.primary}
               />
             }
-          >
-            {inventoryStore.stockState === 'loading' && inventoryStore.stock.length === 0 ? (
-              <SkeletonRows />
-            ) : inventoryStore.stockState === 'error' ? (
-              <View style={styles.stateWrap}>
-                <View style={[styles.stateIcon, styles.stateIconError]}>
-                  <AlertCircle size={26} color={Colors.error} strokeWidth={1.8} />
+            onViewableItemsChanged={onStockViewableItemsChanged}
+            viewabilityConfig={stockViewabilityConfig}
+            ListHeaderComponent={
+              <>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={{ flexGrow: 0 }}
+                  contentContainerStyle={styles.kpiScroll}
+                >
+                  <TouchableOpacity
+                    style={[styles.kpiCard, stockFilter === 'all' && styles.kpiCardActive]}
+                    onPress={() => setStockFilter('all')}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.kpiValue}>{inventoryStore.stockTotalCount}</Text>
+                    <Text style={styles.kpiLabel}>Total SKUs</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.kpiCard, stockFilter === 'low' && styles.kpiCardActive]}
+                    onPress={() => setStockFilter(stockFilter === 'low' ? 'all' : 'low')}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={[styles.kpiValue, styles.kpiValueWarn]}>{lowStockCount}</Text>
+                    <Text style={styles.kpiLabel}>Low Stock</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.kpiCard, stockFilter === 'out' && styles.kpiCardActive]}
+                    onPress={() => setStockFilter(stockFilter === 'out' ? 'all' : 'out')}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={[styles.kpiValue, styles.kpiValueDanger]}>{outOfStockCount}</Text>
+                    <Text style={styles.kpiLabel}>Out of Stock</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.kpiCard}
+                    onPress={() => setSegment('batches')}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={[styles.kpiValue, styles.kpiValueInfo]}>{expiringCount}</Text>
+                    <Text style={styles.kpiLabel}>Expiring ≤3d</Text>
+                  </TouchableOpacity>
+                </ScrollView>
+
+                <View style={styles.searchRow}>
+                  <View style={styles.searchBox}>
+                    <Search size={15} color={Colors.textMuted} />
+                    <TextInput
+                      value={searchQuery}
+                      onChangeText={setSearchQuery}
+                      placeholder="Search products, variants…"
+                      placeholderTextColor={Colors.textMuted}
+                      style={styles.searchInput}
+                    />
+                    {searchQuery ? (
+                      <TouchableOpacity onPress={() => setSearchQuery('')}>
+                        <X size={14} color={Colors.textMuted} />
+                      </TouchableOpacity>
+                    ) : null}
+                  </View>
                 </View>
-                <Text style={styles.stateTitle}>Couldn&apos;t load stock</Text>
-                <Text style={styles.stateSub}>{inventoryStore.stockError}</Text>
-                <Button label="Retry" onPress={() => void inventoryStore.fetchStock()} />
-              </View>
-            ) : filteredStock.length === 0 ? (
+              </>
+            }
+            ListEmptyComponent={
               <View style={styles.stateWrap}>
                 <View style={styles.stateIcon}>
                   <Boxes size={26} color={Colors.primary} strokeWidth={1.5} />
@@ -602,25 +681,16 @@ export default observer(function InventoryScreen() {
                   <Button label="Add inventory batch" onPress={() => setAddBatchOpen(true)} />
                 ) : null}
               </View>
-            ) : (
-              filteredStock.map((item) => (
-                <StockCard
-                  key={item.variant_id}
-                  item={item}
-                  expanded={expandedVariant === item.variant_id}
-                  onToggle={() =>
-                    setExpandedVariant(expandedVariant === item.variant_id ? null : item.variant_id)
-                  }
-                  onAdjust={(batchId) => {
-                    setAdjustPresetBatch(batchId);
-                    setAdjustOpen(true);
-                  }}
-                  onViewBatches={() => setSegment('batches')}
-                />
-              ))
-            )}
-          </ScrollView>
-        </>
+            }
+            ListFooterComponent={
+              inventoryStore.stockLoadingMore ? (
+                <View style={styles.loadMoreRow}>
+                  <ActivityIndicator size="small" color={Colors.primary} />
+                </View>
+              ) : null
+            }
+          />
+        )
       ) : null}
 
       {/* ── Inventory Batches ───────────────────────────────────────────── */}
@@ -778,7 +848,7 @@ export default observer(function InventoryScreen() {
             style={{
               position: 'absolute',
               right: 20,
-              bottom: insets.bottom + 88,
+              bottom: TAB_BAR_CLEARANCE(insets.bottom) + 60,
               gap: 10,
               alignItems: 'flex-end',
             }}
@@ -815,7 +885,7 @@ export default observer(function InventoryScreen() {
       ) : null}
 
       <TouchableOpacity
-        style={[styles.fab, { right: 20, bottom: insets.bottom + 20 }]}
+        style={[styles.fab, { right: 20, bottom: TAB_BAR_CLEARANCE(insets.bottom) }]}
         activeOpacity={0.85}
         onPress={() => setDialOpen((v) => !v)}
       >

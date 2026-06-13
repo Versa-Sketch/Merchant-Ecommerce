@@ -63,16 +63,8 @@ function CountUp({ target, prefix = '', style }: { target: number; prefix?: stri
   return <Text style={style}>{display}</Text>;
 }
 
-function ProgressBar({ value }: { value: number }) {
-  const w = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    Animated.timing(w, { toValue: value, duration: 1000, useNativeDriver: false }).start();
-  }, []);
-  return (
-    <View style={{ height: 4, backgroundColor: Colors.border, borderRadius: 2, overflow: 'hidden' }}>
-      <Animated.View style={{ height: 4, borderRadius: 2, backgroundColor: Colors.primary, width: w.interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] }) }} />
-    </View>
-  );
+function ProgressBar({ value: _value }: { value: number }) {
+  return null;
 }
 
 export default observer(function HomeScreen() {
@@ -168,6 +160,7 @@ export default observer(function HomeScreen() {
           </View>
         </View>
 
+        <View style={styles.sectionHead}><Text style={styles.sectionTitle}>Orders Requiring Action</Text></View>
         <View style={styles.kpiRow}>
           {[
             { label: 'Orders', value: dashboardStore.todayOrders, icon: ShoppingBag },
@@ -194,8 +187,8 @@ export default observer(function HomeScreen() {
         </ScrollView>
 
         <View style={styles.sectionHead}>
-          <Text style={styles.sectionTitle}>Store Health</Text>
-          <View style={styles.healthBadge}><Award size={11} color={Colors.accent} /><Text style={styles.healthBadgeText}>4.8 score</Text></View>
+          <Text style={styles.sectionTitle}>Store Performance</Text>
+          <View style={styles.healthBadge}><Award size={11} color={Colors.accent} /><Text style={styles.healthBadgeText}>92/100 score</Text></View>
         </View>
         <View style={styles.card}>
           {[

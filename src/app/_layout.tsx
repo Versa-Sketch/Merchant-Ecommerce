@@ -6,7 +6,6 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StoreProvider } from '../Common/providers/StoreProvider';
 import { AuthGuard } from '../Common/components/AuthGuard';
 import { rootStore } from '../stores/RootStore';
-import { DevInspector } from '../components/dev/DevInspector';
 
 export default function RootLayout() {
   return (
@@ -28,7 +27,6 @@ export default function RootLayout() {
               <Stack.Screen name="support/index" />
             </Stack>
           </AuthGuard>
-          {__DEV__ && <DevInspector />}
         </SafeAreaProvider>
       </GestureHandlerRootView>
     </StoreProvider>

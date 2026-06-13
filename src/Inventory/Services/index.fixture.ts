@@ -1,7 +1,7 @@
 // Mock data + fixture service for the Inventory module.
 // Toggle `USE_FIXTURES` in Common/services/config.ts to switch to InventoryApiService.
 
-import type { ApiResult } from '../../Common/services/http';
+import type { ApiResult, PaginatedResult } from '../../Common/services/http';
 import { fixtureDelay } from '../../Common/services/config';
 import type { IInventoryService } from './index';
 import type {
@@ -10,6 +10,7 @@ import type {
   CreateBatchInput,
   InventoryBatch,
   InventoryTransaction,
+  StockListParams,
   StockSummaryItem,
   UpdateBatchInput,
 } from '../types/domain';
@@ -327,8 +328,31 @@ export class InventoryFixtureService implements IInventoryService {
     return fixtureDelay(ok(batch, 'Batch updated.'));
   }
 
-  async getStockSummary(_shopId: string): Promise<ApiResult<StockSummaryItem[]>> {
-    return fixtureDelay(ok(stockFixtures));
+  async getStockSummary(
+    _shopId: string,
+    params: StockListParams = {},
+  ): Promise<ApiResult<PaginatedResult<StockSummaryItem>>> {
+    let list = stockFixtures;
+    if (params.search) {
+      const q = params.search.trim().toLowerCase();
+      list = list.filter(
+        (s) => s.product_name.toLowerCase().includes(q) || s.variant_name.toLowerCase().includes(q),
+      );
+    }
+
+    const page = params.page ?? 1;
+    const pageSize = params.page_size ?? 20;
+    const start = (page - 1) * pageSize;
+    const results = list.slice(start, start + pageSize);
+
+    return fixtureDelay(
+      ok({
+        count: list.length,
+        next: start + pageSize < list.length ? String(page + 1) : null,
+        previous: page > 1 ? String(page - 1) : null,
+        results,
+      }),
+    );
   }
 
   async adjustStock(_shopId: string, input: AdjustStockInput): Promise<ApiResult<InventoryBatch>> {

@@ -1,7 +1,7 @@
 // Mock data + fixture service for the Products (catalog) module.
 // Toggle `USE_FIXTURES` in Common/services/config.ts to switch to ProductsApiService.
 
-import type { ApiResult } from '../../Common/services/http';
+import type { ApiResult, PaginatedResult } from '../../Common/services/http';
 import { fixtureDelay } from '../../Common/services/config';
 import type { IProductsService } from './index';
 import type {
@@ -12,6 +12,7 @@ import type {
   CreateProductInput,
   CreateVariantInput,
   ProductDetail,
+  ProductListParams,
   ProductSummary,
   SubcategoryRef,
   UnitRef,
@@ -279,8 +280,40 @@ function toSummary(detail: ProductDetail): ProductSummary {
 // ── Fixture service ───────────────────────────────────────────────────────────
 
 export class ProductsFixtureService implements IProductsService {
-  async listProducts(): Promise<ApiResult<ProductSummary[]>> {
-    return fixtureDelay(ok(productFixtures.map(toSummary)));
+  async listProducts(
+    params: ProductListParams = {},
+  ): Promise<ApiResult<PaginatedResult<ProductSummary>>> {
+    let list = productFixtures.map(toSummary);
+
+    if (params.search) {
+      const q = params.search.trim().toLowerCase();
+      list = list.filter(
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          (p.brand?.name ?? '').toLowerCase().includes(q) ||
+          (p.manufacturer ?? '').toLowerCase().includes(q),
+      );
+    }
+    if (params.category_id) {
+      list = list.filter((p) => p.category?.id === params.category_id);
+    }
+    if (params.is_active !== undefined) {
+      list = list.filter((p) => p.is_active === params.is_active);
+    }
+
+    const page = params.page ?? 1;
+    const pageSize = params.page_size ?? 20;
+    const start = (page - 1) * pageSize;
+    const results = list.slice(start, start + pageSize);
+
+    return fixtureDelay(
+      ok({
+        count: list.length,
+        next: start + pageSize < list.length ? String(page + 1) : null,
+        previous: page > 1 ? String(page - 1) : null,
+        results,
+      }),
+    );
   }
 
   async getProduct(productId: string): Promise<ApiResult<ProductDetail>> {

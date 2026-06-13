@@ -1,4 +1,4 @@
-import { apiRequest, type ApiResult } from '../../Common/services/http';
+import { apiRequest, apiRequestPaginated, buildQuery, type ApiResult, type PaginatedResult } from '../../Common/services/http';
 import { CATALOG_ENDPOINTS } from '../Constants/api';
 import type { IProductsService } from './index';
 import type {
@@ -8,6 +8,7 @@ import type {
   CreateProductInput,
   CreateVariantInput,
   ProductDetail,
+  ProductListParams,
   ProductSummary,
   UpdateProductInput,
   UpdateVariantInput,
@@ -25,8 +26,17 @@ export class ProductsApiService implements IProductsService {
     return this.session.accessToken;
   }
 
-  listProducts(): Promise<ApiResult<ProductSummary[]>> {
-    return apiRequest<ProductSummary[]>(CATALOG_ENDPOINTS.PRODUCTS, { token: this.token });
+  listProducts(params: ProductListParams = {}): Promise<ApiResult<PaginatedResult<ProductSummary>>> {
+    const qs = buildQuery({
+      page: params.page?.toString(),
+      page_size: params.page_size?.toString(),
+      search: params.search,
+      category_id: params.category_id,
+      is_active: params.is_active,
+    });
+    return apiRequestPaginated<ProductSummary>(`${CATALOG_ENDPOINTS.PRODUCTS}${qs}`, {
+      token: this.token,
+    });
   }
 
   getProduct(productId: string): Promise<ApiResult<ProductDetail>> {

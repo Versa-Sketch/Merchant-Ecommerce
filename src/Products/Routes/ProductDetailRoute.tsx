@@ -77,7 +77,6 @@ const VariantCard = observer(function VariantCard({
   onEdit: (v: VariantSummary) => void;
   onDeactivate: (v: VariantSummary) => void;
 }) {
-  console.log("Rendering variant", variant.image);
   return (
     <View
       style={[
@@ -86,7 +85,7 @@ const VariantCard = observer(function VariantCard({
       ]}
     >
       <View style={styles.variantTopRow}>
-        {variant.image !== "" ? (
+        {variant.image ? (
           <Image source={{ uri: variant.image }} style={styles.variantImg} />
         ) : (
           <View style={[styles.variantImg, styles.productImgPlaceholder]}>

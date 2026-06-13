@@ -14,7 +14,7 @@ export default StyleSheet.create({
     borderBottomColor: Colors.borderLight,
   },
   headerTopRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  headerTitle: { fontSize: 26, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.4 },
+  headerTitle: { fontSize: 32, fontWeight: '800', color: Colors.textPrimary },
   headerSubtitle: { fontSize: 12, color: Colors.textMuted, marginTop: 2, fontWeight: '500' },
   backButton: {
     width: 40,
@@ -80,9 +80,9 @@ export default StyleSheet.create({
     borderRadius: 11,
     alignItems: 'center',
   },
-  segmentActive: { backgroundColor: Colors.primary },
+  segmentActive: { backgroundColor: Colors.primaryLight },
   segmentText: { fontSize: 12, fontWeight: '700', color: Colors.textSecondary },
-  segmentTextActive: { color: Colors.white },
+  segmentTextActive: { color: Colors.primary },
 
   // ── Search & filters ──────────────────────────────────────────────────────
   searchRow: { flexDirection: 'row', paddingHorizontal: 20, paddingTop: 12, gap: 10 },
@@ -91,12 +91,13 @@ export default StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.surface,
-    borderRadius: 12,
+    borderRadius: 16,
     paddingHorizontal: 12,
-    height: 42,
+    height: 48,
     gap: 8,
     borderWidth: 1,
-    borderColor: Colors.borderLight,
+    borderColor: Colors.border,
+    ...Shadows.soft,
   },
   searchInput: { flex: 1, fontSize: 13, color: Colors.textPrimary, paddingVertical: 0 },
   chipsRail: { flexGrow: 0, marginTop: 10 },
@@ -109,12 +110,13 @@ export default StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.borderLight,
   },
-  chipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  chipActive: { backgroundColor: Colors.primaryLight, borderColor: 'rgba(15,143,95,0.25)' },
   chipText: { fontSize: 12, fontWeight: '600', color: Colors.textSecondary },
-  chipTextActive: { color: Colors.white },
+  chipTextActive: { color: Colors.primary },
 
   // ── Lists & states ────────────────────────────────────────────────────────
   list: { paddingHorizontal: 20, paddingTop: 14, gap: 10 },
+  loadMoreRow: { paddingVertical: 20, alignItems: 'center' },
   skeletonCard: {
     backgroundColor: Colors.surface,
     borderRadius: 14,
@@ -147,10 +149,11 @@ export default StyleSheet.create({
   // ── Stock overview rows ───────────────────────────────────────────────────
   stockCard: {
     backgroundColor: Colors.surface,
-    borderRadius: 14,
-    padding: 14,
+    borderRadius: 18,
+    padding: 16,
     borderWidth: 1,
-    borderColor: Colors.borderLight,
+    borderColor: Colors.border,
+    ...Shadows.card,
   },
   stockTopRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 },
   stockProductName: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
@@ -158,12 +161,14 @@ export default StyleSheet.create({
   lowStockBadge: {
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 8,
+    borderRadius: 999,
     backgroundColor: Colors.warningBg,
   },
   lowStockBadgeText: { fontSize: 10, fontWeight: '700', color: '#B45309' },
   outOfStockBadge: { backgroundColor: Colors.errorBg },
   outOfStockBadgeText: { color: Colors.error },
+  healthyStockBadge: { backgroundColor: Colors.successBg },
+  healthyStockBadgeText: { color: Colors.success },
   stockMetaRow: {
     flexDirection: 'row',
     marginTop: 10,
@@ -240,14 +245,28 @@ export default StyleSheet.create({
 
   // ── Stock health card (redesigned) ───────────────────────────────────────
   healthDot: { width: 10, height: 10, borderRadius: 5, marginTop: 3 },
-  stockBarTrack: {
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: Colors.border,
-    overflow: 'hidden',
-    marginTop: 10,
+  stockBarTrack: { height: 0, overflow: 'hidden' },
+  stockBarFill: { height: 0 },
+  stockInsightGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 14,
   },
-  stockBarFill: { height: 6, borderRadius: 3 },
+  stockInsightItem: {
+    flex: 1,
+    minWidth: 96,
+    backgroundColor: Colors.background,
+    borderRadius: 14,
+    padding: 12,
+  },
+  stockInsightItemWide: {
+    width: '100%',
+    backgroundColor: Colors.primaryLight,
+    borderRadius: 14,
+    padding: 12,
+  },
+  stockActionText: { fontSize: 13, fontWeight: '800', color: Colors.primary, marginTop: 3 },
   stockSubRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 },
   stockSubText: { fontSize: 11, color: Colors.textMuted, fontWeight: '500' },
   stockSubValue: { fontSize: 12, color: Colors.textPrimary, fontWeight: '700' },
@@ -292,14 +311,8 @@ export default StyleSheet.create({
   expiryUrgentText: { color: Colors.error },
 
   // ── Batch progress bar ────────────────────────────────────────────────────
-  batchProgressTrack: {
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: Colors.border,
-    overflow: 'hidden',
-    marginTop: 8,
-  },
-  batchProgressFill: { height: 6, borderRadius: 3, backgroundColor: Colors.primary },
+  batchProgressTrack: { height: 0, overflow: 'hidden' },
+  batchProgressFill: { height: 0 },
   batchSummaryRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 },
   batchSummaryText: { fontSize: 11, color: Colors.textMuted, fontWeight: '500' },
 

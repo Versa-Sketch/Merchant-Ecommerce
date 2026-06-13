@@ -50,7 +50,7 @@ function TabItem({
     }).start();
   };
 
-  const color       = focused ? Colors.primary : Colors.textMuted;
+  const color       = focused ? Colors.primary : '#94A3B8';
   const strokeWidth = focused ? 2.2 : 1.8;
 
   return (
@@ -139,18 +139,18 @@ export default function TabLayout() {
 const styles = StyleSheet.create({
   bar: {
     position: 'absolute',
-    left: 16,
-    right: 16,
+    left: 14,
+    right: 14,
     flexDirection: 'row',
     backgroundColor: Colors.surface,
-    borderRadius: 24,
-    paddingTop: 10,
-    paddingBottom: 10,
+    borderRadius: 22,
+    paddingTop: 8,
+    paddingBottom: 8,
     paddingHorizontal: 6,
-    shadowColor: '#0F1F17',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.13,
-    shadowRadius: 22,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 18,
     elevation: 12,
     // Subtle top border for definition on light backgrounds
     borderWidth: 1,
@@ -160,11 +160,12 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    minHeight: 52,
     gap: 2,
   },
   iconWrap: {
-    width: 42,
-    height: 30,
+    width: 48,
+    height: 32,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 12,
@@ -175,7 +176,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 10,
     fontWeight: '500',
-    color: Colors.textMuted,
+    color: '#94A3B8',
   },
   labelActive: {
     color: Colors.primary,

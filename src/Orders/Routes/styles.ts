@@ -12,6 +12,8 @@ export default StyleSheet.create({
     paddingBottom: 24,
     overflow: 'hidden',
     position: 'relative',
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
   },
   headerBlob: {
     position: 'absolute',
@@ -74,7 +76,7 @@ export default StyleSheet.create({
   headerStats: {
     flexDirection: 'row',
     backgroundColor: 'rgba(255,255,255,0.12)',
-    borderRadius: 14,
+    borderRadius: 16,
     paddingVertical: 12,
     paddingHorizontal: 6,
     borderWidth: 1,
@@ -98,7 +100,7 @@ export default StyleSheet.create({
   tabsWrap: {
     backgroundColor: Colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    borderBottomColor: Colors.borderLight,
     paddingVertical: 10,
   },
   tabsScroll: { paddingHorizontal: 16, gap: 8 },
@@ -114,12 +116,12 @@ export default StyleSheet.create({
     backgroundColor: Colors.surface,
   },
   tabActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
+    backgroundColor: Colors.primaryLight,
+    borderColor: 'rgba(15,143,95,0.25)',
   },
   tabDot: { width: 6, height: 6, borderRadius: 3 },
   tabText: { fontSize: 13, fontWeight: '500', color: Colors.textSecondary },
-  tabTextActive: { color: Colors.white, fontWeight: '700' },
+  tabTextActive: { color: Colors.primary, fontWeight: '800' },
   tabCount: {
     minWidth: 18,
     height: 18,
@@ -132,7 +134,7 @@ export default StyleSheet.create({
     borderColor: Colors.border,
   },
   tabCountActive: {
-    backgroundColor: 'rgba(255,255,255,0.22)',
+    backgroundColor: Colors.surface,
     borderColor: 'transparent',
   },
   tabCountText: {
@@ -140,7 +142,7 @@ export default StyleSheet.create({
     fontWeight: '700',
     color: Colors.textSecondary,
   },
-  tabCountTextActive: { color: Colors.white },
+  tabCountTextActive: { color: Colors.primary },
 
   // List
   list: { padding: 16, gap: 10 },
@@ -148,9 +150,11 @@ export default StyleSheet.create({
   // Order card
   orderCard: {
     backgroundColor: Colors.surface,
-    borderRadius: 20,
+    borderRadius: 18,
     padding: 16,
     gap: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
     ...Shadows.card,
   },
   orderCardNew: {
@@ -225,16 +229,16 @@ export default StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
     backgroundColor: Colors.primary,
-    borderRadius: 14,
-    paddingVertical: 11,
+    borderRadius: 16,
+    paddingVertical: 13,
     ...Shadows.soft,
   },
   acceptBtnText: { fontSize: 14, fontWeight: '700', color: Colors.white },
   rejectBtn: {
     minWidth: '30%',
     paddingHorizontal: 16,
-    paddingVertical: 11,
-    borderRadius: 14,
+    paddingVertical: 13,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: Colors.border,
     backgroundColor: Colors.surface,
@@ -251,8 +255,8 @@ export default StyleSheet.create({
     alignItems: 'center',
     gap: 2,
     paddingHorizontal: 12,
-    paddingVertical: 11,
-    borderRadius: 14,
+    paddingVertical: 13,
+    borderRadius: 16,
     backgroundColor: Colors.primaryLight,
   },
   viewBtnText: { fontSize: 13, fontWeight: '600', color: Colors.primary },

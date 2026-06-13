@@ -1,4 +1,4 @@
-import type { ApiResult } from '../../Common/services/http';
+import type { ApiResult, PaginatedResult } from '../../Common/services/http';
 import type {
   CategoryDetail,
   CategoryListItem,
@@ -6,6 +6,7 @@ import type {
   CreateProductInput,
   CreateVariantInput,
   ProductDetail,
+  ProductListParams,
   ProductSummary,
   UpdateProductInput,
   UpdateVariantInput,
@@ -13,7 +14,7 @@ import type {
 } from '../types/domain';
 
 export interface IProductsService {
-  listProducts(): Promise<ApiResult<ProductSummary[]>>;
+  listProducts(params?: ProductListParams): Promise<ApiResult<PaginatedResult<ProductSummary>>>;
   getProduct(productId: string): Promise<ApiResult<ProductDetail>>;
   createProduct(input: CreateProductInput): Promise<ApiResult<ProductDetail>>;
   updateProduct(productId: string, patch: UpdateProductInput): Promise<ApiResult<ProductDetail>>;

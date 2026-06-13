@@ -16,6 +16,8 @@ import type {
   UpdateBatchInput,
 } from "../types/domain";
 
+const STOCK_PAGE_SIZE = 20;
+
 export type LoadState = "idle" | "loading" | "error";
 
 export interface MutationResult {
@@ -34,6 +36,11 @@ export class InventoryStore {
   stock: StockSummaryItem[] = [];
   stockState: LoadState = "idle";
   stockError: string | null = null;
+  stockPage = 1;
+  stockHasMore = true;
+  stockTotalCount = 0;
+  stockLoadingMore = false;
+  stockSearch = "";
 
   // Batches — GET /inventory/{shop_id}/batches/
   batches: InventoryBatch[] = [];
@@ -151,7 +158,8 @@ export class InventoryStore {
 
   // ── Stock overview ────────────────────────────────────────────────────────
 
-  async fetchStock(): Promise<void> {
+  async fetchStock(search?: string): Promise<void> {
+    if (search !== undefined) this.stockSearch = search;
     runInAction(() => {
       this.stockState = "loading";
       this.stockError = null;
@@ -164,14 +172,50 @@ export class InventoryStore {
       });
       return;
     }
-    const res = await this.service.getStockSummary(shopId);
+    const res = await this.service.getStockSummary(shopId, {
+      page: 1,
+      page_size: STOCK_PAGE_SIZE,
+      search: this.stockSearch || undefined,
+    });
     runInAction(() => {
       if (res.ok) {
-        this.stock = res.data ?? [];
+        this.stock = res.data?.results ?? [];
+        this.stockPage = 1;
+        this.stockHasMore = !!res.data?.next;
+        this.stockTotalCount = res.data?.count ?? 0;
         this.stockState = "idle";
       } else {
         this.stockState = "error";
         this.stockError = res.message;
+      }
+    });
+  }
+
+  async loadMoreStock(): Promise<void> {
+    if (this.stockLoadingMore || !this.stockHasMore || this.stockState === "loading") return;
+    runInAction(() => {
+      this.stockLoadingMore = true;
+    });
+    const shopId = await this.ensureShopId();
+    if (!shopId) {
+      runInAction(() => {
+        this.stockLoadingMore = false;
+      });
+      return;
+    }
+    const nextPage = this.stockPage + 1;
+    const res = await this.service.getStockSummary(shopId, {
+      page: nextPage,
+      page_size: STOCK_PAGE_SIZE,
+      search: this.stockSearch || undefined,
+    });
+    runInAction(() => {
+      this.stockLoadingMore = false;
+      if (res.ok) {
+        this.stock = [...this.stock, ...(res.data?.results ?? [])];
+        this.stockPage = nextPage;
+        this.stockHasMore = !!res.data?.next;
+        this.stockTotalCount = res.data?.count ?? this.stockTotalCount;
       }
     });
   }

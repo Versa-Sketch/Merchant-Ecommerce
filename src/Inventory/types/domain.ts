@@ -69,3 +69,9 @@ export interface BatchFilters {
   variant_id?: string;
   status?: BatchStatus;
 }
+
+export interface StockListParams {
+  page?: number;
+  page_size?: number;
+  search?: string;
+}

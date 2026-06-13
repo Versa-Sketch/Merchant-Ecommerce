@@ -139,3 +139,13 @@ export interface CategoryUnitsResponse {
   category_name: string;
   units: CategoryUnit[];
 }
+
+// ── List query params ───────────────────────────────────────────────────────
+
+export interface ProductListParams {
+  page?: number;
+  page_size?: number;
+  search?: string;
+  category_id?: string;
+  is_active?: boolean;
+}

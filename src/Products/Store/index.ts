@@ -6,11 +6,11 @@ import { ProductsFixtureService } from '../Services/index.fixture';
 import type { IProductsService } from '../Services';
 import type {
   CategoryListItem,
-  CategoryRef,
   CategoryUnit,
   CreateProductInput,
   CreateVariantInput,
   ProductDetail,
+  ProductListParams,
   ProductSummary,
   SubcategoryRef,
   UpdateProductInput,
@@ -24,12 +24,21 @@ export interface MutationResult {
   message: string;
 }
 
+const PRODUCTS_PAGE_SIZE = 20;
+
 export class ProductsStore {
   // Listing — GET /shops/shop-owner/products/
   products: ProductSummary[] = [];
   listState: LoadState = 'idle';
   listError: string | null = null;
   listFetched = false;
+
+  // Pagination
+  productsPage = 1;
+  productsHasMore = true;
+  productsTotalCount = 0;
+  loadingMore = false;
+  filters: ProductListParams = {};
 
   // Detail — GET /shops/shop-owner/products/{id}/
   detail: ProductDetail | null = null;
@@ -69,15 +78,6 @@ export class ProductsStore {
     return this.products.filter((p) => !p.is_active).length;
   }
 
-  /** Unique categories present in the loaded product list (for the filter rail). */
-  get listCategories(): CategoryRef[] {
-    const seen = new Map<string, CategoryRef>();
-    this.products.forEach((p) => {
-      if (p.category && !seen.has(p.category.id)) seen.set(p.category.id, p.category);
-    });
-    return [...seen.values()];
-  }
-
   unitsFor(categoryId: string | null): CategoryUnit[] {
     return categoryId ? (this.unitsByCategory[categoryId] ?? []) : [];
   }
@@ -88,20 +88,50 @@ export class ProductsStore {
 
   // ── Products ──────────────────────────────────────────────────────────────
 
-  async fetchProducts(): Promise<void> {
+  async fetchProducts(filters?: ProductListParams): Promise<void> {
+    if (filters) this.filters = filters;
     runInAction(() => {
       this.listState = 'loading';
       this.listError = null;
     });
-    const res = await this.service.listProducts();
+    const res = await this.service.listProducts({
+      ...this.filters,
+      page: 1,
+      page_size: PRODUCTS_PAGE_SIZE,
+    });
     runInAction(() => {
       if (res.ok) {
-        this.products = res.data ?? [];
+        this.products = res.data?.results ?? [];
+        this.productsPage = 1;
+        this.productsHasMore = !!res.data?.next;
+        this.productsTotalCount = res.data?.count ?? 0;
         this.listState = 'idle';
         this.listFetched = true;
       } else {
         this.listState = 'error';
         this.listError = res.message;
+      }
+    });
+  }
+
+  async loadMoreProducts(): Promise<void> {
+    if (this.loadingMore || !this.productsHasMore || this.listState === 'loading') return;
+    runInAction(() => {
+      this.loadingMore = true;
+    });
+    const nextPage = this.productsPage + 1;
+    const res = await this.service.listProducts({
+      ...this.filters,
+      page: nextPage,
+      page_size: PRODUCTS_PAGE_SIZE,
+    });
+    runInAction(() => {
+      this.loadingMore = false;
+      if (res.ok) {
+        this.products = [...this.products, ...(res.data?.results ?? [])];
+        this.productsPage = nextPage;
+        this.productsHasMore = !!res.data?.next;
+        this.productsTotalCount = res.data?.count ?? this.productsTotalCount;
       }
     });
   }
